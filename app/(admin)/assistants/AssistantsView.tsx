@@ -23,6 +23,7 @@ interface Doctor {
 interface Props {
   assistants: Assistant[];
   doctors: Doctor[];
+  isAdmin: boolean;
 }
 
 function parseSkills(skills: string[] | string): string[] {
@@ -49,24 +50,14 @@ const SKILL_OPTIONS = [
 ];
 
 const SKILL_COLORS: Record<string, string> = {
-  counter: "var(--mist-100)",
-  mobile: "var(--clay-100)",
-  teaching: "var(--sage-100)",
-  orthodontics: "var(--rose-100)",
-  periodontics: "var(--clay-100)",
-  microscope: "var(--mist-100)",
-  pediatric: "var(--rose-100)",
-  oral_surgery: "var(--sage-100)",
+  counter: "var(--mist-100)", mobile: "var(--clay-100)", teaching: "var(--sage-100)",
+  orthodontics: "var(--rose-100)", periodontics: "var(--clay-100)", microscope: "var(--mist-100)",
+  pediatric: "var(--rose-100)", oral_surgery: "var(--sage-100)",
 };
 const SKILL_TEXT: Record<string, string> = {
-  counter: "var(--mist-700)",
-  mobile: "var(--clay-700)",
-  teaching: "var(--sage-700)",
-  orthodontics: "var(--rose-700)",
-  periodontics: "var(--clay-700)",
-  microscope: "var(--mist-700)",
-  pediatric: "var(--rose-700)",
-  oral_surgery: "var(--sage-700)",
+  counter: "var(--mist-700)", mobile: "var(--clay-700)", teaching: "var(--sage-700)",
+  orthodontics: "var(--rose-700)", periodontics: "var(--clay-700)", microscope: "var(--mist-700)",
+  pediatric: "var(--rose-700)", oral_surgery: "var(--sage-700)",
 };
 const SKILL_LABELS: Record<string, string> = {
   counter: "櫃檯", mobile: "機動", teaching: "教學",
@@ -74,25 +65,52 @@ const SKILL_LABELS: Record<string, string> = {
   pediatric: "兒牙", oral_surgery: "口外",
 };
 
-export default function AssistantsView({ assistants, doctors }: Props) {
+export default function AssistantsView({ assistants, doctors, isAdmin }: Props) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+
+  // Form fields
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [skills, setSkills] = useState<string[]>(["counter", "mobile"]);
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isActive, setIsActive] = useState(true);
   const [isTraining, setIsTraining] = useState(false);
-  const [maxSessionsPerMonth, setMaxSessionsPerMonth] = useState<number | "">("")
+  const [skills, setSkills] = useState<string[]>(["counter", "mobile"]);
+  const [maxSessionsPerMonth, setMaxSessionsPerMonth] = useState<number | "">("");
   const [notes, setNotes] = useState("");
   const [preferredDoctors, setPreferredDoctors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  // Delete confirmation
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function openNew() {
     setEditId(null);
-    setName(""); setEmail(""); setPassword("");
-    setSkills(["counter", "mobile"]); setIsTraining(false); setMaxSessionsPerMonth(""); setNotes("");
+    setName(""); setEmail(""); setPassword(""); setNewPassword(""); setShowNewPassword(false);
+    setIsActive(true); setIsTraining(false);
+    setSkills(["counter", "mobile"]); setMaxSessionsPerMonth(""); setNotes("");
     setPreferredDoctors([]);
+    setFormError("");
+    setShowForm(true);
+  }
+
+  function openEdit(ast: Assistant) {
+    setEditId(ast.id);
+    setName(ast.user.name);
+    setEmail(ast.user.email);
+    setNewPassword(""); setShowNewPassword(false);
+    setIsActive(ast.isActive);
+    setIsTraining(ast.isTraining ?? false);
+    setSkills(parseSkills(ast.skills));
+    setMaxSessionsPerMonth(ast.maxSessionsPerMonth ?? "");
+    setNotes(ast.notes ?? "");
+    setPreferredDoctors(parsePrefs(ast.preferences).preferredDoctorIds ?? []);
+    setFormError("");
     setShowForm(true);
   }
 
@@ -107,99 +125,171 @@ export default function AssistantsView({ assistants, doctors }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
+    setFormError("");
+
     const preferences = JSON.stringify({ preferredDoctorIds: preferredDoctors });
 
     if (editId) {
-      await fetch(`/api/assistants/${editId}`, {
+      const body: Record<string, unknown> = {
+        name, email, skills, notes, isActive, isTraining,
+        maxSessionsPerMonth: maxSessionsPerMonth === "" ? null : maxSessionsPerMonth,
+        preferences,
+      };
+      if (newPassword) body.newPassword = newPassword;
+
+      const res = await fetch(`/api/assistants/${editId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, skills, notes, isTraining, maxSessionsPerMonth: maxSessionsPerMonth === "" ? null : maxSessionsPerMonth, preferences }),
+        body: JSON.stringify(body),
       });
+      if (!res.ok) {
+        const data = await res.json();
+        setFormError(data.error ?? "儲存失敗，請稍後再試");
+        setSubmitting(false);
+        return;
+      }
     } else {
-      await fetch("/api/assistants", {
+      const res = await fetch("/api/assistants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, skills, notes, isTraining, maxSessionsPerMonth: maxSessionsPerMonth === "" ? null : maxSessionsPerMonth, preferences }),
+        body: JSON.stringify({
+          name, email, password, skills, notes, isTraining,
+          maxSessionsPerMonth: maxSessionsPerMonth === "" ? null : maxSessionsPerMonth,
+          preferences,
+        }),
       });
+      if (!res.ok) {
+        const data = await res.json();
+        setFormError(data.error ?? "新增失敗，請稍後再試");
+        setSubmitting(false);
+        return;
+      }
     }
+
     setSubmitting(false);
     setShowForm(false);
     router.refresh();
   }
 
+  async function handleDelete(id: string) {
+    setDeleting(true);
+    await fetch(`/api/assistants/${id}`, { method: "DELETE" });
+    setDeleteId(null);
+    setDeleting(false);
+    router.refresh();
+  }
+
+  async function toggleActive(ast: Assistant) {
+    await fetch(`/api/assistants/${ast.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: ast.user.name, email: ast.user.email,
+        skills: parseSkills(ast.skills),
+        isActive: !ast.isActive,
+        isTraining: ast.isTraining,
+        maxSessionsPerMonth: ast.maxSessionsPerMonth,
+        notes: ast.notes,
+        preferences: ast.preferences,
+      }),
+    });
+    router.refresh();
+  }
+
   return (
-    <div style={{ padding: "28px 32px 40px", maxWidth: 900 }}>
+    <div style={{ padding: "28px 32px 40px", maxWidth: 960 }}>
+      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
-          <h1 style={h1Style}>助理管理</h1>
-          <p style={subStyle}>共 {assistants.length} 位助理</p>
+          <h1 style={h1Style}>助理帳號管理</h1>
+          <p style={subStyle}>共 {assistants.length} 位助理 · {assistants.filter(a => a.isActive).length} 位在職</p>
         </div>
-        <button onClick={openNew} style={primaryBtnStyle}>新增助理</button>
+        <button onClick={openNew} style={primaryBtnStyle}>＋ 新增助理</button>
       </div>
 
+      {/* Form */}
       {showForm && (
         <div style={formCardStyle}>
-          <h3 style={{ margin: "0 0 18px", fontSize: 16, fontWeight: 700 }}>
+          <h3 style={{ margin: "0 0 18px", fontSize: 16, fontWeight: 700, color: "var(--fg1)" }}>
             {editId ? "編輯助理資料" : "新增助理帳號"}
           </h3>
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+            {/* Name + Email */}
             <div style={rowStyle}>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>姓名 *</label>
                 <input value={name} onChange={(e) => setName(e.target.value)} required style={inputStyle} placeholder="助理姓名" />
               </div>
-              {!editId && (
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Email *</label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={inputStyle} placeholder="登入帳號" />
-                </div>
-              )}
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>登入 Email *</label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={inputStyle} placeholder="登入帳號" />
+              </div>
             </div>
 
-            {!editId && (
+            {/* Password */}
+            {!editId ? (
               <div>
                 <label style={labelStyle}>初始密碼 *</label>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required style={inputStyle} placeholder="至少 8 個字元" minLength={8} />
               </div>
+            ) : (
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: showNewPassword ? 8 : 0 }}>
+                  <label style={{ ...labelStyle, margin: 0 }}>重設密碼</label>
+                  <button type="button" onClick={() => { setShowNewPassword((v) => !v); setNewPassword(""); }} style={ghostSmallBtnStyle}>
+                    {showNewPassword ? "取消" : "重設密碼"}
+                  </button>
+                </div>
+                {showNewPassword && (
+                  <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={inputStyle} placeholder="輸入新密碼（至少 8 個字元）" minLength={8} />
+                )}
+              </div>
             )}
 
-            {/* Teaching status */}
+            {/* isActive (edit only) */}
+            {editId && (
+              <div>
+                <label style={labelStyle}>帳號狀態</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {[{ v: true, label: "在職" }, { v: false, label: "停用" }].map(({ v, label }) => (
+                    <button key={String(v)} type="button" onClick={() => setIsActive(v)} style={{
+                      height: 34, padding: "0 16px", borderRadius: "var(--radius-sm)",
+                      border: isActive === v ? "2px solid var(--sage-500)" : "1.5px solid var(--border)",
+                      background: isActive === v ? "var(--brand-soft)" : "transparent",
+                      color: isActive === v ? "var(--sage-700)" : "var(--fg3)",
+                      fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    }}>{label}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Training */}
             <div>
               <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                <div
-                  onClick={() => setIsTraining((v) => !v)}
-                  style={{
-                    width: 20, height: 20, borderRadius: 5, flexShrink: 0,
-                    border: isTraining ? "2px solid var(--clay-500)" : "1.5px solid var(--border)",
-                    background: isTraining ? "var(--clay-500)" : "white",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer", transition: "all .15s",
-                  }}
-                >
+                <div onClick={() => setIsTraining((v) => !v)} style={{
+                  width: 20, height: 20, borderRadius: 5, flexShrink: 0,
+                  border: isTraining ? "2px solid var(--clay-500)" : "1.5px solid var(--border)",
+                  background: isTraining ? "var(--clay-500)" : "white",
+                  display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all .15s",
+                }}>
                   {isTraining && <span style={{ color: "white", fontSize: 13, lineHeight: 1 }}>✓</span>}
                 </div>
                 <div>
                   <span style={{ fontSize: 14, fontWeight: 600, color: "var(--fg1)" }}>教學中</span>
-                  <span style={{ fontSize: 12.5, color: "var(--fg3)", marginLeft: 8 }}>
-                    此助理目前在訓練期間，排班時須安排有教學技能的助理在旁
-                  </span>
+                  <span style={{ fontSize: 12.5, color: "var(--fg3)", marginLeft: 8 }}>排班時須安排有教學技能的助理在旁</span>
                 </div>
               </label>
             </div>
 
-            {/* Max sessions per month */}
+            {/* Max sessions */}
             <div>
               <label style={labelStyle}>每月上班診次上限</label>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <input
-                  type="number"
-                  min={1}
-                  max={60}
-                  value={maxSessionsPerMonth}
+                <input type="number" min={1} max={60} value={maxSessionsPerMonth}
                   onChange={(e) => setMaxSessionsPerMonth(e.target.value === "" ? "" : parseInt(e.target.value))}
-                  placeholder="不限"
-                  style={{ ...inputStyle, width: 120 }}
-                />
+                  placeholder="不限" style={{ ...inputStyle, width: 120 }} />
                 <span style={{ fontSize: 13, color: "var(--fg3)" }}>
                   {maxSessionsPerMonth ? `每月最多 ${maxSessionsPerMonth} 診` : "不設上限"}
                 </span>
@@ -223,14 +313,10 @@ export default function AssistantsView({ assistants, doctors }: Props) {
             </div>
 
             {/* Preferred doctors */}
-            <div>
-              <label style={labelStyle}>偏好跟診醫師</label>
-              <p style={{ fontSize: 12.5, color: "var(--fg3)", margin: "0 0 8px" }}>
-                AI 排班時會優先將此助理排給這些醫師
-              </p>
-              {doctors.length === 0 ? (
-                <p style={{ fontSize: 13, color: "var(--fg3)" }}>尚未建立醫師資料</p>
-              ) : (
+            {doctors.length > 0 && (
+              <div>
+                <label style={labelStyle}>偏好跟診醫師</label>
+                <p style={{ fontSize: 12.5, color: "var(--fg3)", margin: "0 0 8px" }}>AI 排班時會優先將此助理排給這些醫師</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                   {doctors.map((doc) => {
                     const selected = preferredDoctors.includes(doc.id);
@@ -247,22 +333,55 @@ export default function AssistantsView({ assistants, doctors }: Props) {
                     );
                   })}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
+            {/* Notes */}
             <div>
               <label style={labelStyle}>備注</label>
               <input value={notes} onChange={(e) => setNotes(e.target.value)} style={inputStyle} placeholder="其他備注" />
             </div>
 
+            {formError && (
+              <div style={{ padding: "10px 14px", borderRadius: "var(--radius-sm)", background: "#fef0f0", color: "#c97070", fontSize: 13, fontWeight: 600 }}>
+                {formError}
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-              <button type="submit" disabled={submitting} style={primaryBtnStyle}>{submitting ? "儲存中..." : "儲存"}</button>
+              <button type="submit" disabled={submitting} style={primaryBtnStyle}>
+                {submitting ? "儲存中…" : "儲存"}
+              </button>
               <button type="button" onClick={() => setShowForm(false)} style={ghostBtnStyle}>取消</button>
             </div>
           </form>
         </div>
       )}
 
+      {/* Delete confirmation modal */}
+      {deleteId && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.35)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100,
+        }}>
+          <div style={{ background: "white", borderRadius: "var(--radius-lg)", padding: "28px 32px", maxWidth: 400, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,.15)" }}>
+            <h3 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 700, color: "var(--fg1)" }}>確認刪除帳號？</h3>
+            <p style={{ fontSize: 14, color: "var(--fg3)", margin: "0 0 24px", lineHeight: 1.6 }}>
+              此操作無法復原，助理的所有資料（包含班表紀錄）將永久刪除。
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => setDeleteId(null)} style={ghostBtnStyle}>取消</button>
+              <button onClick={() => handleDelete(deleteId)} disabled={deleting} style={{
+                ...primaryBtnStyle, background: "#c97070",
+              }}>
+                {deleting ? "刪除中…" : "確認刪除"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* List */}
       {assistants.length === 0 ? (
         <div style={emptyStyle}>尚未新增任何助理</div>
       ) : (
@@ -276,53 +395,66 @@ export default function AssistantsView({ assistants, doctors }: Props) {
 
             return (
               <div key={ast.id} style={{
-                display: "flex", alignItems: "center", padding: "14px 20px",
-                borderBottom: idx < assistants.length - 1 ? "1px solid var(--border)" : "none", gap: 12,
+                display: "flex", alignItems: "center", padding: "14px 20px", gap: 12,
+                borderBottom: idx < assistants.length - 1 ? "1px solid var(--border)" : "none",
+                opacity: ast.isActive ? 1 : 0.55,
               }}>
-                <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--sage-100)", color: "var(--sage-700)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                {/* Avatar */}
+                <div style={{
+                  width: 38, height: 38, borderRadius: "50%",
+                  background: ast.isActive ? "var(--sage-100)" : "var(--neutral-100)",
+                  color: ast.isActive ? "var(--sage-700)" : "var(--fg3)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontWeight: 700, fontSize: 14, flexShrink: 0,
+                }}>
                   {ast.user.name.slice(-2)}
                 </div>
+
+                {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 14, fontWeight: 600, color: "var(--fg1)" }}>{ast.user.name}</span>
                     {ast.isTraining && (
-                      <span style={{ padding: "1px 8px", borderRadius: "var(--radius-full)", fontSize: 11, fontWeight: 700, background: "var(--clay-100)", color: "var(--clay-700)" }}>
-                        教學中
-                      </span>
+                      <span style={tagStyle("var(--clay-100)", "var(--clay-700)")}>教學中</span>
                     )}
                     {ast.maxSessionsPerMonth && (
-                      <span style={{ padding: "1px 8px", borderRadius: "var(--radius-full)", fontSize: 11, fontWeight: 600, background: "var(--mist-100)", color: "var(--mist-700)" }}>
-                        上限 {ast.maxSessionsPerMonth} 診
-                      </span>
+                      <span style={tagStyle("var(--mist-100)", "var(--mist-700)")}>上限 {ast.maxSessionsPerMonth} 診</span>
+                    )}
+                    {!ast.isActive && (
+                      <span style={tagStyle("var(--neutral-100)", "var(--fg3)")}>已停用</span>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--fg3)", marginTop: 1 }}>{ast.user.email}</div>
+                  <div style={{ fontSize: 12, color: "var(--fg3)", marginTop: 2 }}>{ast.user.email}</div>
                   {prefDocNames.length > 0 && (
                     <div style={{ fontSize: 11.5, color: "var(--fg3)", marginTop: 2 }}>
                       偏好：{prefDocNames.join("、")}
                     </div>
                   )}
                 </div>
-                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", maxWidth: 200 }}>
+
+                {/* Skills */}
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", maxWidth: 180 }}>
                   {skillList.map((skill) => (
-                    <span key={skill} style={{ padding: "2px 8px", borderRadius: "var(--radius-full)", fontSize: 11, fontWeight: 600, background: SKILL_COLORS[skill] ?? "var(--neutral-100)", color: SKILL_TEXT[skill] ?? "var(--fg2)" }}>
+                    <span key={skill} style={tagStyle(SKILL_COLORS[skill] ?? "var(--neutral-100)", SKILL_TEXT[skill] ?? "var(--fg2)")}>
                       {SKILL_LABELS[skill] ?? skill}
                     </span>
                   ))}
                 </div>
-                <span style={{ padding: "3px 10px", borderRadius: "var(--radius-full)", fontSize: 12, fontWeight: 600, background: ast.isActive ? "var(--success-soft)" : "var(--neutral-100)", color: ast.isActive ? "var(--success)" : "var(--fg3)", flexShrink: 0 }}>
-                  {ast.isActive ? "在職" : "停用"}
-                </span>
-                <button onClick={() => {
-                  setEditId(ast.id);
-                  setName(ast.user.name);
-                  setSkills(parseSkills(ast.skills));
-                  setIsTraining(ast.isTraining ?? false);
-                  setMaxSessionsPerMonth(ast.maxSessionsPerMonth ?? "");
-                  setNotes(ast.notes ?? "");
-                  setPreferredDoctors(parsePrefs(ast.preferences).preferredDoctorIds ?? []);
-                  setShowForm(true);
-                }} style={editBtnStyle}>編輯</button>
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                  <button onClick={() => toggleActive(ast)} style={{
+                    ...actionBtnStyle,
+                    background: ast.isActive ? "var(--neutral-100)" : "var(--brand-soft)",
+                    color: ast.isActive ? "var(--fg3)" : "var(--sage-700)",
+                  }}>
+                    {ast.isActive ? "停用" : "啟用"}
+                  </button>
+                  <button onClick={() => openEdit(ast)} style={actionBtnStyle}>編輯</button>
+                  {isAdmin && (
+                    <button onClick={() => setDeleteId(ast.id)} style={{ ...actionBtnStyle, color: "#c97070" }}>刪除</button>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -332,12 +464,17 @@ export default function AssistantsView({ assistants, doctors }: Props) {
   );
 }
 
+function tagStyle(bg: string, color: string): React.CSSProperties {
+  return { padding: "1px 8px", borderRadius: "var(--radius-full)", fontSize: 11, fontWeight: 600, background: bg, color };
+}
+
 const h1Style: React.CSSProperties = { fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, color: "var(--fg1)", margin: 0 };
 const subStyle: React.CSSProperties = { fontSize: 14, color: "var(--fg3)", margin: "4px 0 0" };
 const primaryBtnStyle: React.CSSProperties = { height: 38, padding: "0 18px", borderRadius: "var(--radius-md)", background: "var(--sage-500)", color: "white", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer" };
 const ghostBtnStyle: React.CSSProperties = { height: 38, padding: "0 16px", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg2)", border: "1px solid var(--border)", fontSize: 14, cursor: "pointer" };
-const editBtnStyle: React.CSSProperties = { height: 30, padding: "0 12px", borderRadius: "var(--radius-sm)", background: "var(--neutral-100)", color: "var(--fg2)", border: "1px solid var(--border)", fontSize: 12.5, cursor: "pointer" };
-const formCardStyle: React.CSSProperties = { padding: "20px 24px", borderRadius: "var(--radius-lg)", background: "var(--bg-raised)", border: "1px solid var(--border)", marginBottom: 20 };
+const ghostSmallBtnStyle: React.CSSProperties = { height: 28, padding: "0 12px", borderRadius: "var(--radius-sm)", background: "transparent", color: "var(--sage-600)", border: "1px solid var(--sage-300)", fontSize: 12.5, fontWeight: 600, cursor: "pointer" };
+const actionBtnStyle: React.CSSProperties = { height: 30, padding: "0 12px", borderRadius: "var(--radius-sm)", background: "var(--neutral-100)", color: "var(--fg2)", border: "1px solid var(--border)", fontSize: 12.5, cursor: "pointer" };
+const formCardStyle: React.CSSProperties = { padding: "22px 24px", borderRadius: "var(--radius-lg)", background: "var(--bg-raised)", border: "1px solid var(--border)", marginBottom: 20 };
 const tableCardStyle: React.CSSProperties = { background: "var(--bg-raised)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", overflow: "hidden" };
 const emptyStyle: React.CSSProperties = { padding: "60px 20px", textAlign: "center", color: "var(--fg3)", fontSize: 15 };
 const rowStyle: React.CSSProperties = { display: "flex", gap: 12 };
