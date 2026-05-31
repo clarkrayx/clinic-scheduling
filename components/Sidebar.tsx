@@ -4,13 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 
-const ADMIN_ITEMS = [
+const ADMIN_GROUP_1 = [
   { href: "/doctors", icon: UserIcon, label: "醫師管理" },
   { href: "/assistants", icon: UsersIcon, label: "助理管理" },
+];
+
+const ADMIN_GROUP_2 = [
   { href: "/clinic-days", icon: ClipboardIcon, label: "開診設定" },
   { href: "/preference-overview", icon: HeartIcon, label: "劃假總覽" },
   { href: "/rules", icon: SettingsIcon, label: "排班規則" },
-  { href: "/generate", icon: SparklesIcon, label: "自動排班" },
 ];
 
 function NavItem({
@@ -105,16 +107,35 @@ export default function Sidebar({ userName, userRole, isAdmin }: SidebarProps) {
       {/* Admin section */}
       {isAdmin && (
         <>
+          {/* Group 1: 人員管理 */}
           <div style={{
             fontSize: 11, fontWeight: 700, letterSpacing: "0.08em",
             color: "var(--fg3)", padding: "14px 12px 6px", textTransform: "uppercase",
           }}>
-            管理設定
+            人員管理
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {ADMIN_ITEMS.map((item) => (
+            {ADMIN_GROUP_1.map((item) => (
               <NavItem key={item.href} {...item} />
             ))}
+          </div>
+
+          {/* Group 2: 診所設定 */}
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: "0.08em",
+            color: "var(--fg3)", padding: "14px 12px 6px", textTransform: "uppercase",
+          }}>
+            診所設定
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {ADMIN_GROUP_2.map((item) => (
+              <NavItem key={item.href} {...item} />
+            ))}
+          </div>
+
+          {/* 自動排班 — 獨立放最下 */}
+          <div style={{ marginTop: 8, padding: "0 2px" }}>
+            <AutoScheduleBtn />
           </div>
         </>
       )}
@@ -165,6 +186,33 @@ export default function Sidebar({ userName, userRole, isAdmin }: SidebarProps) {
         </button>
       </div>
     </aside>
+  );
+}
+
+function AutoScheduleBtn() {
+  const pathname = usePathname();
+  const active = pathname === "/generate";
+  return (
+    <a
+      href="/generate"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "11px 14px",
+        borderRadius: "var(--radius-md)",
+        background: active ? "var(--sage-600)" : "var(--sage-500)",
+        color: "white",
+        textDecoration: "none",
+        fontWeight: 600,
+        fontSize: 14.5,
+        boxShadow: active ? "none" : "0 2px 8px rgba(124,144,128,.35)",
+        transition: "background .15s, box-shadow .15s",
+      }}
+    >
+      <SparklesIcon size={18} />
+      <span>自動排班</span>
+    </a>
   );
 }
 
