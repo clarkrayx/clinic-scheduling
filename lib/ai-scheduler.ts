@@ -23,6 +23,7 @@ interface ScheduleInput {
     id: string;
     name: string;
     skills: string[];
+    maxSessionsPerMonth: number | null;
   }[];
   leaveRequests: {
     assistantId: string;
@@ -72,7 +73,7 @@ function buildSchedulePrompt(input: ScheduleInput): string {
 
 ## 助理名單
 ${input.assistants
-  .map((a) => `- ID: ${a.id}, 姓名: ${a.name}, 技能: ${a.skills.join(", ") || "通用"}`)
+  .map((a) => `- ID: ${a.id}, 姓名: ${a.name}, 技能: ${a.skills.join(", ") || "通用"}${a.maxSessionsPerMonth ? `, 每月上限: ${a.maxSessionsPerMonth}診` : ""}`)
   .join("\n")}
 
 ## 請假申請（這些日期不能排班）
@@ -111,6 +112,7 @@ ${input.clinicDays
 4. 公平分配，讓每位助理的班數盡量均等
 5. 有請假的日期不排班
 6. 技能要匹配（counter 技能排櫃檯，mobile 技能排機動）
+7. 若助理名單中有設定「每月上限」，該助理本月的總診次數不得超過此上限
 
 ## 輸出格式
 請以 JSON 格式回覆，包含以下欄位：

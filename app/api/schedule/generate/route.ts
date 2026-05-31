@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
       id: a.id,
       name: a.user.name,
       skills: JSON.parse(a.skills as string),
+      maxSessionsPerMonth: (a as unknown as { maxSessionsPerMonth: number | null }).maxSessionsPerMonth ?? null,
     })),
     leaveRequests: leaveRequests.map((l) => ({
       assistantId: l.assistantId,

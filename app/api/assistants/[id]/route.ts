@@ -9,7 +9,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const { id } = await params;
-  const { name, skills, notes, isActive, isTraining, preferences } = await req.json();
+  const { name, skills, notes, isActive, isTraining, maxSessionsPerMonth, preferences } = await req.json();
 
   const assistant = await prisma.assistant.findUnique({ where: { id }, include: { user: true } });
   if (!assistant) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -23,6 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         notes,
         isActive,
         ...(isTraining !== undefined && { isTraining }),
+        ...(maxSessionsPerMonth !== undefined && { maxSessionsPerMonth: maxSessionsPerMonth || null }),
         ...(preferences !== undefined && { preferences }),
       },
     }),

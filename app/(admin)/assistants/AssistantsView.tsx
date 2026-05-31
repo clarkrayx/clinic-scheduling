@@ -8,6 +8,7 @@ interface Assistant {
   skills: string[] | string;
   isActive: boolean;
   isTraining: boolean;
+  maxSessionsPerMonth: number | null;
   notes: string | null;
   preferences: string | null;
   user: { id: string; name: string; email: string };
@@ -82,6 +83,7 @@ export default function AssistantsView({ assistants, doctors }: Props) {
   const [password, setPassword] = useState("");
   const [skills, setSkills] = useState<string[]>(["counter", "mobile"]);
   const [isTraining, setIsTraining] = useState(false);
+  const [maxSessionsPerMonth, setMaxSessionsPerMonth] = useState<number | "">("")
   const [notes, setNotes] = useState("");
   const [preferredDoctors, setPreferredDoctors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -89,7 +91,7 @@ export default function AssistantsView({ assistants, doctors }: Props) {
   function openNew() {
     setEditId(null);
     setName(""); setEmail(""); setPassword("");
-    setSkills(["counter", "mobile"]); setIsTraining(false); setNotes("");
+    setSkills(["counter", "mobile"]); setIsTraining(false); setMaxSessionsPerMonth(""); setNotes("");
     setPreferredDoctors([]);
     setShowForm(true);
   }
@@ -111,13 +113,13 @@ export default function AssistantsView({ assistants, doctors }: Props) {
       await fetch(`/api/assistants/${editId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, skills, notes, isTraining, preferences }),
+        body: JSON.stringify({ name, skills, notes, isTraining, maxSessionsPerMonth: maxSessionsPerMonth === "" ? null : maxSessionsPerMonth, preferences }),
       });
     } else {
       await fetch("/api/assistants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, skills, notes, isTraining, preferences }),
+        body: JSON.stringify({ name, email, password, skills, notes, isTraining, maxSessionsPerMonth: maxSessionsPerMonth === "" ? null : maxSessionsPerMonth, preferences }),
       });
     }
     setSubmitting(false);
@@ -183,6 +185,25 @@ export default function AssistantsView({ assistants, doctors }: Props) {
                   </span>
                 </div>
               </label>
+            </div>
+
+            {/* Max sessions per month */}
+            <div>
+              <label style={labelStyle}>每月上班診次上限</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={maxSessionsPerMonth}
+                  onChange={(e) => setMaxSessionsPerMonth(e.target.value === "" ? "" : parseInt(e.target.value))}
+                  placeholder="不限"
+                  style={{ ...inputStyle, width: 120 }}
+                />
+                <span style={{ fontSize: 13, color: "var(--fg3)" }}>
+                  {maxSessionsPerMonth ? `每月最多 ${maxSessionsPerMonth} 診` : "不設上限"}
+                </span>
+              </div>
             </div>
 
             {/* Skills */}
@@ -269,6 +290,11 @@ export default function AssistantsView({ assistants, doctors }: Props) {
                         教學中
                       </span>
                     )}
+                    {ast.maxSessionsPerMonth && (
+                      <span style={{ padding: "1px 8px", borderRadius: "var(--radius-full)", fontSize: 11, fontWeight: 600, background: "var(--mist-100)", color: "var(--mist-700)" }}>
+                        上限 {ast.maxSessionsPerMonth} 診
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: 12, color: "var(--fg3)", marginTop: 1 }}>{ast.user.email}</div>
                   {prefDocNames.length > 0 && (
@@ -292,6 +318,7 @@ export default function AssistantsView({ assistants, doctors }: Props) {
                   setName(ast.user.name);
                   setSkills(parseSkills(ast.skills));
                   setIsTraining(ast.isTraining ?? false);
+                  setMaxSessionsPerMonth(ast.maxSessionsPerMonth ?? "");
                   setNotes(ast.notes ?? "");
                   setPreferredDoctors(parsePrefs(ast.preferences).preferredDoctorIds ?? []);
                   setShowForm(true);

@@ -45,11 +45,12 @@ model Assistant {
   id          String   @id @default(cuid())
   userId      String   @unique
   user        User     @relation(fields: [userId], references: [id])
-  skills      String   @default("[]")
-  isActive    Boolean  @default(true)
-  isTraining  Boolean  @default(false)
-  notes       String?
-  preferences String?
+  skills              String   @default("[]")
+  isActive            Boolean  @default(true)
+  isTraining          Boolean  @default(false)
+  maxSessionsPerMonth Int?
+  notes               String?
+  preferences         String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
