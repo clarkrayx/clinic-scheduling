@@ -1,12 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getDaysInMonth, startOfMonth } from "date-fns";
 
+const SESSIONS = [
+  { key: "morning", label: "早診" },
+  { key: "afternoon", label: "午診" },
+  { key: "evening", label: "晚診" },
+] as const;
+
+type SessionKey = "morning" | "afternoon" | "evening";
+
 interface PreferenceDay {
   date: Date | string;
-  reason: string | null;
+  sessionType: string;
 }
 
 interface Props {
@@ -28,12 +36,19 @@ function dateKey(date: Date | string): string {
   return String(date).slice(0, 10);
 }
 
+function markedKey(date: string, session: SessionKey) {
+  return `${date}:${session}`;
+}
+
 export default function PreferenceView({ year, month, assistantId, preferenceDays }: Props) {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null); // "date:session" being toggled
 
-  // 已畫假的日期集合
-  const marked = new Set(preferenceDays.map((p) => dateKey(p.date)));
+  const marked = new Set(
+    preferenceDays.map((p) => markedKey(dateKey(p.date), p.sessionType as SessionKey))
+  );
+
+  const totalMarked = marked.size;
 
   const daysInMonth = getDaysInMonth(new Date(year, month - 1));
   const firstDayOfWeek = startOfMonth(new Date(year, month - 1)).getDay();
@@ -45,35 +60,37 @@ export default function PreferenceView({ year, month, assistantId, preferenceDay
     router.push(`/preference?year=${y}&month=${m}`);
   }
 
-  async function toggleDay(dateStr: string) {
+  const toggleSession = useCallback(async (dateStr: string, session: SessionKey) => {
+    const key = markedKey(dateStr, session);
     if (busy) return;
-    setBusy(true);
-    if (marked.has(dateStr)) {
-      const res = await fetch(`/api/preference-days/${dateStr}?assistantId=${assistantId}`, {
+    setBusy(key);
+
+    if (marked.has(key)) {
+      await fetch(`/api/preference-days/${dateStr}?assistantId=${assistantId}&sessionType=${session}`, {
         method: "DELETE",
       });
-      if (!res.ok) { alert("取消失敗，請稍後再試。"); setBusy(false); return; }
     } else {
-      const res = await fetch("/api/preference-days", {
+      await fetch("/api/preference-days", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: dateStr, assistantId }),
+        body: JSON.stringify({ date: dateStr, sessionType: session, assistantId }),
       });
-      if (!res.ok) { alert("畫假失敗，請稍後再試。"); setBusy(false); return; }
     }
-    setBusy(false);
+
+    setBusy(null);
     router.refresh();
-  }
+  }, [busy, marked, assistantId, router]);
 
   return (
-    <div style={{ padding: "28px 32px 40px", maxWidth: 720 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+    <div style={{ padding: "28px 32px 40px" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
           <h1 style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, color: "var(--fg1)", margin: 0 }}>
-            畫假（希望休假）
+            劃假月曆
           </h1>
           <p style={{ fontSize: 14, color: "var(--fg3)", margin: "4px 0 0" }}>
-            點選您希望休息的日期，排班時會盡量參考（非保證）
+            點選日期的診別來標記希望休假，排班時會盡量參考（非保證）
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -85,13 +102,24 @@ export default function PreferenceView({ year, month, assistantId, preferenceDay
         </div>
       </div>
 
+      {/* Legend + count */}
       <div style={{
-        display: "flex", alignItems: "center", gap: 8, padding: "10px 14px",
+        display: "flex", alignItems: "center", gap: 16, padding: "10px 16px",
         background: "var(--surface-tint)", borderRadius: "var(--radius-md)",
-        margin: "16px 0 18px", fontSize: 13, color: "var(--fg2)",
+        margin: "0 0 18px", fontSize: 13, color: "var(--fg2)", flexWrap: "wrap",
       }}>
-        <span style={{ width: 14, height: 14, borderRadius: 4, background: "var(--rose-300)", flexShrink: 0 }} />
-        已標記為希望休假 · 共 {marked.size} 天
+        <div style={{ display: "flex", gap: 10 }}>
+          {SESSIONS.map((s) => (
+            <span key={s.key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <span style={{ width: 26, height: 22, borderRadius: 5, background: SESSION_BG[s.key], border: `1.5px solid ${SESSION_BORDER[s.key]}`, display: "inline-block" }} />
+              <span style={{ color: SESSION_COLOR[s.key], fontWeight: 600 }}>{s.label}</span>
+            </span>
+          ))}
+        </div>
+        <span style={{ color: "var(--fg3)" }}>·</span>
+        <span style={{ fontWeight: 600, color: totalMarked > 0 ? "var(--rose-600)" : "var(--fg3)" }}>
+          已標記 {totalMarked} 個診別
+        </span>
       </div>
 
       {/* Weekday headers */}
@@ -110,46 +138,89 @@ export default function PreferenceView({ year, month, assistantId, preferenceDay
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
           const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-          const isMarked = marked.has(dateStr);
           const dayOfWeek = (firstDayOfWeek + i) % 7;
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+          const markedSessions = SESSIONS.filter((s) => marked.has(markedKey(dateStr, s.key)));
+          const hasAny = markedSessions.length > 0;
 
           return (
-            <button
+            <div
               key={day}
-              onClick={() => toggleDay(dateStr)}
-              disabled={busy}
               style={{
-                minHeight: 64,
+                minHeight: 90,
                 borderRadius: "var(--radius-md)",
-                border: isMarked ? "2px solid var(--rose-500)" : "1px solid var(--border)",
-                background: isMarked ? "var(--rose-100)" : "var(--bg-raised)",
-                cursor: busy ? "wait" : "pointer",
-                padding: "8px",
+                border: hasAny ? "1.5px solid var(--rose-300)" : "1px solid var(--border)",
+                background: hasAny ? "var(--rose-50, #fff8f8)" : "var(--bg-raised)",
+                padding: "8px 6px",
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "flex-start",
-                gap: 4,
-                transition: "all .15s",
-                opacity: busy ? 0.6 : 1,
+                gap: 5,
               }}
             >
+              {/* Day number */}
               <span style={{
-                fontSize: 14, fontWeight: 600,
-                color: isMarked ? "var(--rose-700)" : isWeekend ? "var(--rose-500)" : "var(--fg2)",
+                fontSize: 13, fontWeight: 600, alignSelf: "flex-end",
+                color: isWeekend ? "var(--rose-500)" : "var(--fg2)",
               }}>
                 {day}
               </span>
-              {isMarked && (
-                <span style={{ fontSize: 11, color: "var(--rose-700)", fontWeight: 600 }}>希望休</span>
-              )}
-            </button>
+
+              {/* Session buttons */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                {SESSIONS.map((s) => {
+                  const key = markedKey(dateStr, s.key);
+                  const isMarked = marked.has(key);
+                  const isBusy = busy === key;
+
+                  return (
+                    <button
+                      key={s.key}
+                      onClick={() => toggleSession(dateStr, s.key)}
+                      disabled={isBusy || busy !== null}
+                      title={isMarked ? `取消 ${s.label} 劃假` : `標記 ${s.label} 為希望休假`}
+                      style={{
+                        width: "100%",
+                        height: 22,
+                        borderRadius: 5,
+                        border: isMarked ? `1.5px solid ${SESSION_BORDER[s.key]}` : "1px solid var(--border)",
+                        background: isMarked ? SESSION_BG[s.key] : "transparent",
+                        color: isMarked ? SESSION_COLOR[s.key] : "var(--fg3)",
+                        fontSize: 11,
+                        fontWeight: isMarked ? 700 : 400,
+                        cursor: busy !== null ? "wait" : "pointer",
+                        transition: "all .12s",
+                        opacity: isBusy ? 0.5 : 1,
+                        padding: 0,
+                      }}
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </div>
     </div>
   );
 }
+
+const SESSION_BG: Record<SessionKey, string> = {
+  morning: "var(--clay-100, #f5ebe0)",
+  afternoon: "var(--mist-100, #e8f0f5)",
+  evening: "var(--rose-100, #fce8e8)",
+};
+const SESSION_BORDER: Record<SessionKey, string> = {
+  morning: "var(--clay-300, #d4a87a)",
+  afternoon: "var(--mist-300, #90b8cc)",
+  evening: "var(--rose-300, #e8a0a0)",
+};
+const SESSION_COLOR: Record<SessionKey, string> = {
+  morning: "var(--clay-700, #7a4f28)",
+  afternoon: "var(--mist-700, #2a6080)",
+  evening: "var(--rose-700, #8a3030)",
+};
 
 const navBtnStyle: React.CSSProperties = {
   width: 34, height: 34, borderRadius: "var(--radius-sm)",

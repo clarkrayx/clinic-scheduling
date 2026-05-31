@@ -138,10 +138,11 @@ model PreferenceDay {
   date        DateTime  @db.Date
   year        Int
   month       Int
+  sessionType String    @default("morning")
   reason      String?
   createdAt   DateTime  @default(now())
 
-  @@unique([assistantId, date])
+  @@unique([assistantId, date, sessionType])
 }
 
 model SpecialRule {

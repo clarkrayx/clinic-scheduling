@@ -28,6 +28,7 @@ interface ScheduleInput {
   preferenceDays: {
     assistantId: string;
     date: string;
+    sessionType: string;
   }[];
   specialRules: {
     title: string;
@@ -80,7 +81,10 @@ ${input.assistants
 ${
   input.preferenceDays.length === 0
     ? "（無劃假）"
-    : input.preferenceDays.map((p) => `- 助理ID: ${p.assistantId}, 日期: ${p.date}`).join("\n")
+    : input.preferenceDays.map((p) => {
+        const s = p.sessionType === "morning" ? "早診" : p.sessionType === "afternoon" ? "午診" : "晚診";
+        return `- 助理ID: ${p.assistantId}, 日期: ${p.date}, 診別: ${s}`;
+      }).join("\n")
 }
 
 ## 特殊規則

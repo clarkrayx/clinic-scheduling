@@ -28,7 +28,6 @@ export default async function AdminLayout({
         userName={session.user.name ?? "管理者"}
         userRole={ROLE_LABELS[session.user.role ?? "MANAGER"] ?? "人事主管"}
         isAdmin={true}
-        assistantId={null}
       />
       <main
         style={{

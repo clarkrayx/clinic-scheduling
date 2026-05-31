@@ -13,7 +13,6 @@ export default async function PreferencePage({
 
   const params = await searchParams;
   const now = new Date();
-  // 預設顯示下個月（排班通常排下個月）
   let defaultYear = now.getFullYear();
   let defaultMonth = now.getMonth() + 2;
   if (defaultMonth > 12) { defaultMonth = 1; defaultYear++; }
@@ -21,7 +20,6 @@ export default async function PreferencePage({
   const year = parseInt(params.year ?? String(defaultYear));
   const month = parseInt(params.month ?? String(defaultMonth));
 
-  // 找出此使用者的 assistant 記錄
   const assistant = await prisma.assistant.findUnique({
     where: { userId: session.user.id },
   });
@@ -29,7 +27,7 @@ export default async function PreferencePage({
   if (!assistant) {
     return (
       <div style={{ padding: "60px 32px", textAlign: "center", color: "var(--fg3)" }}>
-        此帳號不是助理，無法使用畫假功能。
+        此帳號不是助理，無法使用劃假功能。
       </div>
     );
   }
@@ -51,7 +49,7 @@ export default async function PreferencePage({
       assistantId={assistant.id}
       preferenceDays={preferenceDays.map((p) => ({
         date: p.date,
-        reason: p.reason,
+        sessionType: p.sessionType,
       }))}
     />
   );

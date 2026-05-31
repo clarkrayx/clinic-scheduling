@@ -17,36 +17,37 @@ export async function GET(req: NextRequest) {
 
   const days = await prisma.preferenceDay.findMany({
     where: { assistantId, year, month },
-    select: { date: true, assistantId: true },
+    select: { date: true, assistantId: true, sessionType: true },
   });
 
   return NextResponse.json(days.map((d) => ({
     assistantId: d.assistantId,
     date: d.date.toISOString().slice(0, 10),
+    sessionType: d.sessionType,
   })));
 }
 
-// 助理新增一筆「劃假」希望休假日
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { date, reason, assistantId } = await req.json();
-  if (!date || !assistantId) {
-    return NextResponse.json({ error: "Date and assistantId required" }, { status: 400 });
+  const { date, sessionType, reason, assistantId } = await req.json();
+  if (!date || !assistantId || !sessionType) {
+    return NextResponse.json({ error: "date, assistantId, sessionType required" }, { status: 400 });
   }
 
   const d = new Date(date);
   const pref = await prisma.preferenceDay.upsert({
-    where: { assistantId_date: { assistantId, date: d } },
+    where: { assistantId_date_sessionType: { assistantId, date: d, sessionType } },
     update: { reason },
     create: {
       assistantId,
       date: d,
       year: d.getUTCFullYear(),
       month: d.getUTCMonth() + 1,
+      sessionType,
       reason,
     },
   });

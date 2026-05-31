@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
     preferenceDays: preferenceDays.map((p) => ({
       assistantId: p.assistantId,
       date: p.date.toISOString().slice(0, 10),
+      sessionType: p.sessionType,
     })),
     specialRules: specialRules.map((r) => ({
       title: r.title,
