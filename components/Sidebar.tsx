@@ -7,6 +7,7 @@ import { signOut } from "next-auth/react";
 const ADMIN_GROUP_1 = [
   { href: "/doctors", icon: UserIcon, label: "醫師管理" },
   { href: "/assistants", icon: UsersIcon, label: "助理管理" },
+  { href: "/roles", icon: ShieldIcon, label: "角色權限" },
 ];
 
 const ADMIN_GROUP_2 = [
@@ -186,6 +187,14 @@ export default function Sidebar({ userName, userRole, isAdmin }: SidebarProps) {
         </button>
       </div>
     </aside>
+  );
+}
+
+function ShieldIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
   );
 }
 

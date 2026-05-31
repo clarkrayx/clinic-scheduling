@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -228,6 +229,12 @@ export default function LoginPage() {
             </div>
           )}
 
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <Link href="/forgot-password" style={{ fontSize: 13, color: "var(--sage-600)", textDecoration: "none", fontWeight: 500 }}>
+              忘記密碼？
+            </Link>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -247,6 +254,12 @@ export default function LoginPage() {
             {loading ? "登入中..." : "登入"}
           </button>
         </form>
+        <p style={{ textAlign: "center", marginTop: 20, fontSize: 13.5, color: "var(--fg3)" }}>
+          還沒有帳號？{" "}
+          <Link href="/register" style={{ color: "var(--sage-600)", fontWeight: 600, textDecoration: "none" }}>
+            申請助理帳號
+          </Link>
+        </p>
       </div>
     </div>
   );

@@ -6,6 +6,9 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const isPublic =
     nextUrl.pathname.startsWith("/login") ||
+    nextUrl.pathname.startsWith("/register") ||
+    nextUrl.pathname.startsWith("/forgot-password") ||
+    nextUrl.pathname.startsWith("/reset-password") ||
     nextUrl.pathname.startsWith("/api/auth") ||
     nextUrl.pathname.endsWith(".html");
 
