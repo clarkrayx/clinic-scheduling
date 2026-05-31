@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Gellix";
+  src: url("/fonts/Gellix-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gellix";
+  src: url("/fonts/Gellix-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gellix";
+  src: url("/fonts/Gellix-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gellix";
+  src: url("/fonts/Gellix-ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-display: swap;
+}
+
+:root {
+  /* Sage / Primary (莫蘭迪綠) */
+  --sage-50:  #F2F5F2;
+  --sage-100: #E5EBE6;
+  --sage-200: #CDD7CF;
+  --sage-300: #AFBEB2;
+  --sage-400: #93A597;
+  --sage-500: #7C9080;
+  --sage-600: #66796A;
+  --sage-700: #526156;
+  --sage-800: #414D44;
+  --sage-900: #333C36;
+
+  /* Morandi accents */
+  --rose-100: #F2E6E5;
+  --rose-300: #DCBEBC;
+  --rose-500: #C39B99;
+  --rose-700: #9E726F;
+
+  --clay-100: #F3EAE1;
+  --clay-300: #DCC3AC;
+  --clay-500: #C3A083;
+  --clay-700: #9C7858;
+
+  --mist-100: #E9EEF1;
+  --mist-300: #BFCDD4;
+  --mist-500: #93A8B2;
+  --mist-700: #6A828D;
+
+  /* Neutrals */
+  --neutral-0:   #FFFFFF;
+  --neutral-50:  #FAFAF7;
+  --neutral-100: #F4F4F0;
+  --neutral-200: #E8E8E2;
+  --neutral-300: #D7D7CF;
+  --neutral-400: #B6B6AD;
+  --neutral-500: #8E8E85;
+  --neutral-600: #6B6B63;
+  --neutral-700: #4F4F49;
+  --neutral-800: #333330;
+  --neutral-900: #1C1C1A;
+
+  /* Semantic */
+  --bg:           var(--neutral-50);
+  --bg-raised:    var(--neutral-0);
+  --surface-tint: var(--sage-50);
+  --border:       var(--neutral-200);
+  --fg1:          var(--neutral-800);
+  --fg2:          var(--neutral-600);
+  --fg3:          var(--neutral-400);
+  --brand:        var(--sage-500);
+  --brand-soft:   var(--sage-100);
+  --brand-dark:   var(--sage-700);
+
+  /* Status */
+  --success:      #5E8A6A;
+  --success-soft: #EBF2ED;
+  --warning:      #9A7C45;
+  --warning-soft: #F7F0E1;
+  --danger:       #C06060;
+  --danger-soft:  #FAE8E8;
+
+  /* Typography */
+  --font-display: "Gellix", "Noto Sans TC", system-ui, sans-serif;
+  --font-sans: "Noto Sans TC", system-ui, sans-serif;
+
+  /* Radii */
+  --radius-sm:   8px;
+  --radius-md:   14px;
+  --radius-lg:   20px;
+  --radius-xl:   28px;
+  --radius-full: 9999px;
+
+  /* Shadows (green-tinted, soft) */
+  --shadow-xs: 0 1px 2px rgba(51,60,54,0.06);
+  --shadow-sm: 0 2px 6px rgba(51,60,54,0.08), 0 1px 2px rgba(51,60,54,0.04);
+  --shadow-md: 0 4px 16px rgba(51,60,54,0.10), 0 1px 4px rgba(51,60,54,0.06);
+  --shadow-lg: 0 8px 32px rgba(51,60,54,0.13), 0 2px 8px rgba(51,60,54,0.07);
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 3px rgba(124,144,128,0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg1);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--neutral-300); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--neutral-400); }

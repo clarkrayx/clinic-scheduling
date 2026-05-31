@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  ASSISTANT
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ScheduleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(ASSISTANT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assistant Assistant?
+}
+
+model Doctor {
+  id          String   @id @default(cuid())
+  name        String
+  specialty   String?
+  phone       String?
+  notes       String?
+  isActive    Boolean  @default(true)
+  preferences String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clinicSessions ClinicSession[]
+}
+
+model Assistant {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  skills    String[]
+  isActive  Boolean  @default(true)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shiftAssignments ShiftAssignment[]
+  leaveRequests    LeaveRequest[]
+}
+
+model ClinicDay {
+  id        String         @id @default(cuid())
+  date      DateTime       @db.Date
+  isOpen    Boolean        @default(true)
+  notes     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  sessions ClinicSession[]
+
+  @@unique([date])
+}
+
+model ClinicSession {
+  id             String    @id @default(cuid())
+  clinicDayId    String
+  clinicDay      ClinicDay @relation(fields: [clinicDayId], references: [id])
+  doctorId       String?
+  doctor         Doctor?   @relation(fields: [doctorId], references: [id])
+  sessionType    String
+  startTime      String
+  endTime        String
+  counterNeeded  Int       @default(4)
+  mobileNeeded   Int       @default(4)
+  createdAt      DateTime  @default(now())
+
+  shiftAssignments ShiftAssignment[]
+}
+
+model Schedule {
+  id          String         @id @default(cuid())
+  year        Int
+  month       Int
+  status      ScheduleStatus @default(DRAFT)
+  generatedAt DateTime?
+  publishedAt DateTime?
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  shiftAssignments ShiftAssignment[]
+
+  @@unique([year, month])
+}
+
+model ShiftAssignment {
+  id              String        @id @default(cuid())
+  scheduleId      String
+  schedule        Schedule      @relation(fields: [scheduleId], references: [id])
+  assistantId     String
+  assistant       Assistant     @relation(fields: [assistantId], references: [id])
+  clinicSessionId String
+  clinicSession   ClinicSession @relation(fields: [clinicSessionId], references: [id])
+  role            String
+  createdAt       DateTime      @default(now())
+
+  @@unique([scheduleId, assistantId, clinicSessionId])
+}
+
+model LeaveRequest {
+  id          String      @id @default(cuid())
+  assistantId String
+  assistant   Assistant   @relation(fields: [assistantId], references: [id])
+  date        DateTime    @db.Date
+  reason      String?
+  status      LeaveStatus @default(PENDING)
+  reviewedBy  String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model SpecialRule {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  ruleType    String
+  config      String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
