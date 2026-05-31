@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "排班助理 | 診所助理排班系統",
-  description: "智慧化診所助理排班管理系統",
+  title: "品叡品沐 | PINRAY DENTAL CARE",
+  description: "品叡品沐牙醫診所助理排班管理系統",
 };
 
 export default function RootLayout({
