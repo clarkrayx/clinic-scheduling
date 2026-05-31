@@ -92,6 +92,7 @@ export default function ClinicDaysView({ year, month, clinicDays, doctors, clini
   const [counterNeeded, setCounterNeeded] = useState(4);
   const [mobileNeeded, setMobileNeeded] = useState(4);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const daysInMonth = getDaysInMonth(new Date(year, month - 1));
   const firstDayOfWeek = startOfMonth(new Date(year, month - 1)).getDay();
@@ -139,6 +140,7 @@ export default function ClinicDaysView({ year, month, clinicDays, doctors, clini
     setSelectedDoctorIds([]);
     setCounterNeeded(4);
     setMobileNeeded(4);
+    setFormError(null);
     setPanel("add-session");
   }
 
@@ -147,37 +149,47 @@ export default function ClinicDaysView({ year, month, clinicDays, doctors, clini
     if (!selectedDate) return;
 
     setSubmitting(true);
+    setFormError(null);
 
-    // If clinic day doesn't exist yet, create it first
-    let clinicDayId = dayMap[selectedDate]?.id ?? pendingClinicDayId;
-    if (!clinicDayId) {
-      const res = await fetch("/api/clinic-days", {
+    try {
+      // If clinic day doesn't exist yet, create it first.
+      let clinicDayId = dayMap[selectedDate]?.id ?? pendingClinicDayId;
+      if (!clinicDayId) {
+        const dayRes = await fetch("/api/clinic-days", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ date: selectedDate }),
+        });
+        if (!dayRes.ok) throw new Error("無法建立開診日，請稍後再試。");
+        const newDay = await dayRes.json();
+        clinicDayId = newDay.id;
+        setPendingClinicDayId(newDay.id);
+      }
+      if (!clinicDayId) throw new Error("找不到開診日，請重新選擇日期。");
+
+      const sessionRes = await fetch("/api/clinic-sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: selectedDate }),
+        body: JSON.stringify({
+          clinicDayId,
+          clinicId: selectedClinicId || null,
+          sessionType,
+          startTime,
+          endTime,
+          doctorIds: selectedDoctorIds,
+          counterNeeded,
+          mobileNeeded,
+        }),
       });
-      const newDay = await res.json();
-      clinicDayId = newDay.id;
-      setPendingClinicDayId(newDay.id);
+      if (!sessionRes.ok) throw new Error("無法新增診次，請確認資料後再試。");
+
+      setPanel("day");
+      router.refresh();
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "新增診次失敗，請稍後再試。");
+    } finally {
+      setSubmitting(false);
     }
-    if (!clinicDayId) { setSubmitting(false); return; }
-    await fetch("/api/clinic-sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        clinicDayId,
-        clinicId: selectedClinicId || null,
-        sessionType,
-        startTime,
-        endTime,
-        doctorIds: selectedDoctorIds,
-        counterNeeded,
-        mobileNeeded,
-      }),
-    });
-    setSubmitting(false);
-    setPanel("day");
-    router.refresh();
   }
 
   async function deleteSession(sessionId: string) {
@@ -389,6 +401,11 @@ export default function ClinicDaysView({ year, month, clinicDays, doctors, clini
             {panel === "add-session" && (
               <form onSubmit={addSession} style={{ display: "flex", flexDirection: "column", gap: 13 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--fg1)" }}>新增診次</div>
+                {formError && (
+                  <div style={{ padding: "9px 11px", borderRadius: "var(--radius-md)", background: "var(--danger-soft)", color: "var(--danger)", fontSize: 12.5, fontWeight: 600 }}>
+                    {formError}
+                  </div>
+                )}
 
                 {/* Clinic selector */}
                 {clinics.length > 0 && (
