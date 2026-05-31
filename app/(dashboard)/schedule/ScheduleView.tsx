@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { getDaysInMonth, startOfMonth } from "date-fns";
+import { useState } from "react";
 
 interface Assignment {
   id: string;
@@ -126,6 +127,8 @@ export default function ScheduleView({
   doctors,
 }: Props) {
   const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const daysInMonth = getDaysInMonth(new Date(year, month - 1));
   const firstDay = startOfMonth(new Date(year, month - 1)).getDay();
 
@@ -138,6 +141,15 @@ export default function ScheduleView({
     if (m > 12) { y++; m = 1; }
     if (m < 1) { y--; m = 12; }
     router.push(`/schedule?year=${y}&month=${m}`);
+  }
+
+  async function handleDeleteSchedule() {
+    if (!schedule) return;
+    setDeleting(true);
+    await fetch(`/api/schedule/${schedule.id}`, { method: "DELETE" });
+    setDeleting(false);
+    setConfirmDelete(false);
+    router.refresh();
   }
 
   const assignmentsByDate: Record<string, Assignment[]> = {};
@@ -157,6 +169,43 @@ export default function ScheduleView({
 
   return (
     <div style={{ padding: "28px 32px 40px", maxWidth: 1300 }}>
+
+      {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.35)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100,
+        }}>
+          <div style={{
+            background: "white", borderRadius: "var(--radius-lg)",
+            padding: "28px 32px", maxWidth: 400, width: "90%",
+            boxShadow: "0 8px 32px rgba(0,0,0,.15)",
+          }}>
+            <h3 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 700, color: "var(--fg1)" }}>
+              確認刪除班表？
+            </h3>
+            <p style={{ fontSize: 14, color: "var(--fg3)", margin: "0 0 24px", lineHeight: 1.6 }}>
+              {year} 年 {month} 月的班表（{schedule?.shiftAssignments.length} 個班次）將被永久刪除，刪除後可重新生成。
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                style={{ height: 38, padding: "0 16px", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg2)", border: "1px solid var(--border)", fontSize: 14, cursor: "pointer" }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleDeleteSchedule}
+                disabled={deleting}
+                style={{ height: 38, padding: "0 16px", borderRadius: "var(--radius-md)", background: "#c97070", color: "white", border: "none", fontSize: 14, fontWeight: 600, cursor: deleting ? "wait" : "pointer" }}
+              >
+                {deleting ? "刪除中…" : "確認刪除"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
@@ -184,6 +233,19 @@ export default function ScheduleView({
             {month} 月
           </span>
           <button onClick={() => navigate(1)} style={navBtnStyle}>›</button>
+          {isAdmin && schedule && (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{
+                height: 38, padding: "0 14px", borderRadius: "var(--radius-md)",
+                background: "transparent", color: "#c97070",
+                border: "1.5px solid #e0b0b0", fontSize: 13.5, fontWeight: 600,
+                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
+              }}
+            >
+              <TrashIcon size={14} /> 刪除班表
+            </button>
+          )}
           {isAdmin && (
             <a href="/generate" style={{
               display: "inline-flex", alignItems: "center", gap: 7, height: 38,
@@ -380,3 +442,14 @@ const navBtnStyle: React.CSSProperties = {
   cursor: "pointer", color: "var(--fg2)", fontSize: 18,
   display: "inline-flex", alignItems: "center", justifyContent: "center",
 };
+
+function TrashIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  );
+}
