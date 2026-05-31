@@ -86,10 +86,10 @@ export default function Sidebar({ userName, userRole, isAdmin }: SidebarProps) {
         </div>
         <div>
           <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 17, color: "var(--fg1)" }}>
-            排班助理
+            品叡品沐
           </div>
           <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em", color: "var(--sage-500)" }}>
-            SHIFT ASSISTANT
+            PINRAY DENTAL CARE
           </div>
         </div>
       </div>

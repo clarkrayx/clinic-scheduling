@@ -14,17 +14,23 @@ export default async function SchedulePage({
   const year = parseInt(params.year ?? String(now.getFullYear()));
   const month = parseInt(params.month ?? String(now.getMonth() + 1));
 
-  const schedule = await prisma.schedule.findUnique({
-    where: { year_month: { year, month } },
-    include: {
-      shiftAssignments: {
-        include: {
-          assistant: { include: { user: true } },
-          clinicSession: { include: { clinicDay: true, clinic: true } },
+  const [schedule, doctors] = await Promise.all([
+    prisma.schedule.findUnique({
+      where: { year_month: { year, month } },
+      include: {
+        shiftAssignments: {
+          include: {
+            assistant: { include: { user: true } },
+            clinicSession: { include: { clinicDay: true, clinic: true } },
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.doctor.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+    }),
+  ]);
 
   const isAdmin =
     session?.user?.role === "ADMIN" || session?.user?.role === "MANAGER";
@@ -45,6 +51,7 @@ export default async function SchedulePage({
       schedule={schedule as Parameters<typeof ScheduleView>[0]["schedule"]}
       isAdmin={isAdmin}
       myAssistantId={myAssistantId}
+      doctors={doctors}
     />
   );
 }
