@@ -57,13 +57,12 @@ const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 
 function dateKey(date: Date | string): string {
   if (date instanceof Date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(date.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
   }
-
-  return date.slice(0, 10);
+  return String(date).slice(0, 10);
 }
 
 export default function ScheduleView({
