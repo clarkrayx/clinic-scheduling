@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const endDate = new Date(year, month, 0);
 
   // Fetch all required data
-  const [clinicDays, assistants, leaveRequests, specialRules] = await Promise.all([
+  const [clinicDays, assistants, leaveRequests, specialRules, doctors] = await Promise.all([
     prisma.clinicDay.findMany({
       where: { date: { gte: startDate, lte: endDate }, isOpen: true },
       include: { sessions: { include: { clinic: true } } },
@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
       },
     }),
     prisma.specialRule.findMany({ where: { isActive: true } }),
+    prisma.doctor.findMany({ where: { isActive: true } }),
   ]);
 
   if (clinicDays.length === 0) {
@@ -75,6 +76,11 @@ export async function POST(req: NextRequest) {
       description: r.description,
       ruleType: r.ruleType,
       config: r.config,
+    })),
+    doctors: doctors.map((d) => ({
+      id: d.id,
+      name: d.name,
+      specialty: d.specialty,
     })),
   };
 

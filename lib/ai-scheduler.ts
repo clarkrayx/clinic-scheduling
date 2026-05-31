@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { prisma } from "./prisma";
 
 const client = new Anthropic();
 
@@ -12,7 +13,8 @@ interface ScheduleInput {
       sessionType: string;
       startTime: string;
       endTime: string;
-      doctorName?: string;
+      clinicName?: string;
+      doctorIds: string[];
       counterNeeded: number;
       mobileNeeded: number;
     }[];
@@ -32,6 +34,11 @@ interface ScheduleInput {
     ruleType: string;
     config: string;
   }[];
+  doctors: {
+    id: string;
+    name: string;
+    specialty: string | null;
+  }[];
 }
 
 interface AssignmentResult {
@@ -48,12 +55,7 @@ export async function generateSchedule(
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 4096,
-    messages: [
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
+    messages: [{ role: "user", content: prompt }],
   });
 
   const responseText =
@@ -64,15 +66,13 @@ export async function generateSchedule(
 
 function buildSchedulePrompt(input: ScheduleInput): string {
   const monthStr = `${input.year}年${input.month}月`;
+  const doctorMap = Object.fromEntries(input.doctors.map((d) => [d.id, d.name]));
 
   return `你是一位診所排班助理，負責為 ${monthStr} 安排助理的班表。
 
 ## 助理名單
 ${input.assistants
-  .map(
-    (a) =>
-      `- ID: ${a.id}, 姓名: ${a.name}, 技能: ${a.skills.join(", ") || "通用"}`
-  )
+  .map((a) => `- ID: ${a.id}, 姓名: ${a.name}, 技能: ${a.skills.join(", ") || "通用"}`)
   .join("\n")}
 
 ## 請假申請（這些日期不能排班）
@@ -93,22 +93,24 @@ ${
 ${input.clinicDays
   .map((day) =>
     day.sessions
-      .map(
-        (s) =>
-          `- 診次ID: ${s.id}, 日期: ${day.date}, ${s.sessionType}診 (${s.startTime}-${s.endTime}), 醫師: ${s.doctorName || "未指定"}, 需要櫃檯: ${s.counterNeeded}人, 機動: ${s.mobileNeeded}人`
-      )
+      .map((s) => {
+        const doctorNames = s.doctorIds
+          .map((id) => doctorMap[id])
+          .filter(Boolean)
+          .join("、");
+        return `- 診次ID: ${s.id}, 日期: ${day.date}, 診所: ${s.clinicName || "未指定"}, ${s.sessionType}診 (${s.startTime}-${s.endTime}), 醫師: ${doctorNames || "未指定"}, 需要櫃檯: ${s.counterNeeded}人, 機動: ${s.mobileNeeded}人`;
+      })
       .join("\n")
   )
   .join("\n")}
 
 ## 排班規則
 1. 每位助理一天最多排 2 個診
-2. 同一天不能有超過連續 3 個診
-3. 每週至少休息 2 天
-4. 避免同一位助理連續排超過 5 天
-5. 公平分配，讓每位助理的班數盡量均等
-6. 有請假的日期不排班
-7. 技能要匹配（counter 技能排櫃檯，mobile 技能排機動）
+2. 每週至少休息 2 天
+3. 避免同一位助理連續排超過 5 天
+4. 公平分配，讓每位助理的班數盡量均等
+5. 有請假的日期不排班
+6. 技能要匹配（counter 技能排櫃檯，mobile 技能排機動）
 
 ## 輸出格式
 請以 JSON 格式回覆，包含以下欄位：
@@ -126,14 +128,28 @@ ${input.clinicDays
 只輸出 JSON，不要有其他文字。`;
 }
 
+// Bug 5 fix: 用非貪婪方式找第一個完整 JSON 物件，避免多個 JSON 結構時擷取錯誤
 function parseScheduleResponse(responseText: string): {
   assignments: AssignmentResult[];
   notes: string;
 } {
   try {
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON found");
-    return JSON.parse(jsonMatch[0]);
+    // 找第一個 { 到對應的 } (計數大括號深度)
+    const start = responseText.indexOf("{");
+    if (start === -1) throw new Error("No JSON found");
+    let depth = 0;
+    let end = -1;
+    for (let i = start; i < responseText.length; i++) {
+      if (responseText[i] === "{") depth++;
+      else if (responseText[i] === "}") {
+        depth--;
+        if (depth === 0) { end = i; break; }
+      }
+    }
+    if (end === -1) throw new Error("Unmatched braces");
+    const parsed = JSON.parse(responseText.slice(start, end + 1));
+    if (!Array.isArray(parsed.assignments)) throw new Error("Invalid format");
+    return parsed;
   } catch {
     return {
       assignments: [],

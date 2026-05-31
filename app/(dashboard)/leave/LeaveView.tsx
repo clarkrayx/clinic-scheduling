@@ -44,12 +44,16 @@ export default function LeaveView({ leaveRequests, isAdmin, myAssistantId }: Pro
     e.preventDefault();
     if (!myAssistantId) return;
     setSubmitting(true);
-    await fetch("/api/leave", {
+    const res = await fetch("/api/leave", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ date, reason, assistantId: myAssistantId }),
     });
     setSubmitting(false);
+    if (!res.ok) {
+      alert("送出失敗，請稍後再試。");
+      return;
+    }
     setShowForm(false);
     setDate("");
     setReason("");
@@ -57,11 +61,15 @@ export default function LeaveView({ leaveRequests, isAdmin, myAssistantId }: Pro
   }
 
   async function updateStatus(id: string, status: string) {
-    await fetch(`/api/leave/${id}`, {
+    const res = await fetch(`/api/leave/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+    if (!res.ok) {
+      alert("更新失敗，請稍後再試。");
+      return;
+    }
     router.refresh();
   }
 

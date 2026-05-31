@@ -57,14 +57,14 @@ function parseDoctorIds(raw: string): string[] {
 }
 
 function dateKey(date: Date | string): string {
+  // Always use UTC date parts to avoid timezone shift on ISO strings like "2026-06-01T00:00:00.000Z"
   if (date instanceof Date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(date.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
   }
-
-  return date.slice(0, 10);
+  return String(date).slice(0, 10);
 }
 
 // Soft colors for clinics
@@ -193,14 +193,16 @@ export default function ClinicDaysView({ year, month, clinicDays, doctors, clini
   }
 
   async function deleteSession(sessionId: string) {
-    await fetch(`/api/clinic-sessions/${sessionId}`, { method: "DELETE" });
+    const res = await fetch(`/api/clinic-sessions/${sessionId}`, { method: "DELETE" });
+    if (!res.ok) { alert("刪除診次失敗，請稍後再試。"); return; }
     router.refresh();
   }
 
   async function removeDay(dateStr: string) {
     const day = dayMap[dateStr];
     if (!day) return;
-    await fetch(`/api/clinic-days/${day.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/clinic-days/${day.id}`, { method: "DELETE" });
+    if (!res.ok) { alert("移除開診日失敗，請稍後再試。"); return; }
     setSelectedDate(null);
     router.refresh();
   }
