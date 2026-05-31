@@ -50,7 +50,7 @@ export async function POST() {
           role: "ASSISTANT",
           assistant: {
             create: {
-              skills: i % 2 === 0 ? ["counter", "mobile"] : ["mobile", "dental"],
+              skills: i % 2 === 0 ? '["counter","mobile"]' : '["mobile","dental"]',
             },
           },
         },
@@ -74,6 +74,7 @@ export async function POST() {
     { title: "每週至少休息 2 天", description: "每位助理每週至少要有 2 天不排班", ruleType: "min_days_off_per_week", config: '{"min": 2}' },
     { title: "避免連續 5 天以上", description: "不可安排同一位助理連續上班超過 5 天", ruleType: "max_consecutive_days", config: '{"max": 5}' },
     { title: "公平分配原則", description: "每月每位助理的總診次數應盡量均等，差距不超過 3 次", ruleType: "custom", config: '{"maxDiff": 3}' },
+    { title: "教學中助理須有教學師傅陪同", description: "若某位助理的資料中標記為「教學中」，則該助理跟診時，同一個診次必須同時安排另一位具有「教學（teaching）」技能的資深助理在旁指導。不得讓教學中的助理單獨跟診。", ruleType: "custom", config: '{"requireTeachingBuddy": true}' },
   ];
 
   for (const rule of defaultRules) {

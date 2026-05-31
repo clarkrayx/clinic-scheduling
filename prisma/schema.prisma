@@ -4,23 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-}
-
-enum Role {
-  ADMIN
-  MANAGER
-  ASSISTANT
-}
-
-enum LeaveStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-enum ScheduleStatus {
-  DRAFT
-  PUBLISHED
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -28,48 +12,58 @@ model User {
   email     String   @unique
   password  String
   name      String
-  role      Role     @default(ASSISTANT)
+  role      String   @default("ASSISTANT")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   assistant Assistant?
 }
 
+model Clinic {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  shortName String
+  color     String   @default("#7C9080")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  sessions ClinicSession[]
+}
+
 model Doctor {
   id          String   @id @default(cuid())
   name        String
   specialty   String?
-  phone       String?
   notes       String?
   isActive    Boolean  @default(true)
   preferences String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  clinicSessions ClinicSession[]
 }
 
 model Assistant {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
-  skills    String[]
-  isActive  Boolean  @default(true)
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  skills      String   @default("[]")
+  isActive    Boolean  @default(true)
+  isTraining  Boolean  @default(false)
+  notes       String?
+  preferences String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   shiftAssignments ShiftAssignment[]
   leaveRequests    LeaveRequest[]
 }
 
 model ClinicDay {
-  id        String         @id @default(cuid())
-  date      DateTime       @db.Date
-  isOpen    Boolean        @default(true)
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  isOpen    Boolean  @default(true)
   notes     String?
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   sessions ClinicSession[]
 
@@ -77,31 +71,32 @@ model ClinicDay {
 }
 
 model ClinicSession {
-  id             String    @id @default(cuid())
-  clinicDayId    String
-  clinicDay      ClinicDay @relation(fields: [clinicDayId], references: [id])
-  doctorId       String?
-  doctor         Doctor?   @relation(fields: [doctorId], references: [id])
-  sessionType    String
-  startTime      String
-  endTime        String
-  counterNeeded  Int       @default(4)
-  mobileNeeded   Int       @default(4)
-  createdAt      DateTime  @default(now())
+  id            String    @id @default(cuid())
+  clinicDayId   String
+  clinicDay     ClinicDay @relation(fields: [clinicDayId], references: [id])
+  clinicId      String?
+  clinic        Clinic?   @relation(fields: [clinicId], references: [id])
+  doctorIds     String    @default("[]")
+  sessionType   String
+  startTime     String
+  endTime       String
+  counterNeeded Int       @default(4)
+  mobileNeeded  Int       @default(4)
+  createdAt     DateTime  @default(now())
 
   shiftAssignments ShiftAssignment[]
 }
 
 model Schedule {
-  id          String         @id @default(cuid())
+  id          String    @id @default(cuid())
   year        Int
   month       Int
-  status      ScheduleStatus @default(DRAFT)
+  status      String    @default("DRAFT")
   generatedAt DateTime?
   publishedAt DateTime?
   notes       String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   shiftAssignments ShiftAssignment[]
 
@@ -123,15 +118,15 @@ model ShiftAssignment {
 }
 
 model LeaveRequest {
-  id          String      @id @default(cuid())
+  id          String    @id @default(cuid())
   assistantId String
-  assistant   Assistant   @relation(fields: [assistantId], references: [id])
-  date        DateTime    @db.Date
+  assistant   Assistant @relation(fields: [assistantId], references: [id])
+  date        DateTime  @db.Date
   reason      String?
-  status      LeaveStatus @default(PENDING)
+  status      String    @default("PENDING")
   reviewedBy  String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model SpecialRule {

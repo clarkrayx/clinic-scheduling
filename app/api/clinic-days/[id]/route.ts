@@ -2,17 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
-export async function POST(req: NextRequest) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { name, specialty, notes, preferences } = await req.json();
-  if (!name) return NextResponse.json({ error: "Name required" }, { status: 400 });
+  const { id } = await params;
 
-  const doctor = await prisma.doctor.create({
-    data: { name, specialty, notes, preferences },
-  });
-  return NextResponse.json(doctor);
+  // Delete sessions first
+  await prisma.clinicSession.deleteMany({ where: { clinicDayId: id } });
+  await prisma.clinicDay.delete({ where: { id } });
+
+  return NextResponse.json({ ok: true });
 }

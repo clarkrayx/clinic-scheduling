@@ -9,8 +9,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const { id } = await params;
-  const data = await req.json();
-  const doctor = await prisma.doctor.update({ where: { id }, data });
+  const { name, specialty, notes, preferences } = await req.json();
+  const doctor = await prisma.doctor.update({ where: { id }, data: { name, specialty, notes, preferences } });
   return NextResponse.json(doctor);
 }
 

@@ -20,7 +20,7 @@ export default async function SchedulePage({
       shiftAssignments: {
         include: {
           assistant: { include: { user: true } },
-          clinicSession: { include: { clinicDay: true, doctor: true } },
+          clinicSession: { include: { clinicDay: true, clinic: true } },
         },
       },
     },
@@ -30,7 +30,6 @@ export default async function SchedulePage({
     session?.user?.role === "ADMIN" || session?.user?.role === "MANAGER";
   const currentUserId = session?.user?.id;
 
-  // For assistants, find their assistant record
   let myAssistantId: string | null = null;
   if (!isAdmin && currentUserId) {
     const assistant = await prisma.assistant.findUnique({
@@ -43,7 +42,7 @@ export default async function SchedulePage({
     <ScheduleView
       year={year}
       month={month}
-      schedule={schedule}
+      schedule={schedule as Parameters<typeof ScheduleView>[0]["schedule"]}
       isAdmin={isAdmin}
       myAssistantId={myAssistantId}
     />

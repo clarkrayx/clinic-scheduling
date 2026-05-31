@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { name, email, password, skills, notes } = await req.json();
+  const { name, email, password, skills, notes, isTraining, preferences } = await req.json();
   if (!name || !email || !password) {
     return NextResponse.json({ error: "Name, email, password required" }, { status: 400 });
   }
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       password: hashed,
       role: "ASSISTANT",
       assistant: {
-        create: { skills: skills ?? [], notes },
+        create: { skills: JSON.stringify(skills ?? []), notes, isTraining: isTraining ?? false, preferences: preferences ?? null },
       },
     },
     include: { assistant: true },

@@ -4,7 +4,10 @@ import { NextResponse } from "next/server";
 export default auth((req) => {
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
-  const isPublic = nextUrl.pathname.startsWith("/login") || nextUrl.pathname.startsWith("/api/auth");
+  const isPublic =
+    nextUrl.pathname.startsWith("/login") ||
+    nextUrl.pathname.startsWith("/api/auth") ||
+    nextUrl.pathname.startsWith("/api/seed");
 
   if (!isLoggedIn && !isPublic) {
     return NextResponse.redirect(new URL("/login", nextUrl));

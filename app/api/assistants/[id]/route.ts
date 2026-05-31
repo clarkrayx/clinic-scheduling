@@ -9,14 +9,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const { id } = await params;
-  const { name, skills, notes, isActive } = await req.json();
+  const { name, skills, notes, isActive, isTraining, preferences } = await req.json();
 
   const assistant = await prisma.assistant.findUnique({ where: { id }, include: { user: true } });
   if (!assistant) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.$transaction([
     prisma.user.update({ where: { id: assistant.userId }, data: { name } }),
-    prisma.assistant.update({ where: { id }, data: { skills, notes, isActive } }),
+    prisma.assistant.update({
+      where: { id },
+      data: {
+        skills: JSON.stringify(skills),
+        notes,
+        isActive,
+        ...(isTraining !== undefined && { isTraining }),
+        ...(preferences !== undefined && { preferences }),
+      },
+    }),
   ]);
 
   return NextResponse.json({ ok: true });

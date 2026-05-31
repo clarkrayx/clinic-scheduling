@@ -13,7 +13,7 @@ interface Assignment {
     sessionType: string;
     startTime: string;
     endTime: string;
-    doctor: { name: string } | null;
+    clinic: { name: string; shortName: string; color: string } | null;
     clinicDay: { date: Date | string };
   };
 }
@@ -335,9 +335,9 @@ export default function ScheduleView({
                           {a.assistant.user.name}
                         </div>
                       )}
-                      {!isAdmin && a.clinicSession.doctor && (
+                      {!isAdmin && a.clinicSession.clinic && (
                         <div style={{ color: "var(--fg3)", fontSize: 11 }}>
-                          {a.clinicSession.doctor.name} 醫師
+                          {a.clinicSession.clinic.shortName}
                         </div>
                       )}
                     </div>

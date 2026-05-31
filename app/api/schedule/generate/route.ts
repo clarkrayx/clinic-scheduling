@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const [clinicDays, assistants, leaveRequests, specialRules] = await Promise.all([
     prisma.clinicDay.findMany({
       where: { date: { gte: startDate, lte: endDate }, isOpen: true },
-      include: { sessions: { include: { doctor: true } } },
+      include: { sessions: { include: { clinic: true } } },
       orderBy: { date: "asc" },
     }),
     prisma.assistant.findMany({
@@ -50,12 +50,13 @@ export async function POST(req: NextRequest) {
     month,
     clinicDays: clinicDays.map((day) => ({
       date: day.date.toISOString().slice(0, 10),
-      sessions: day.sessions.map((s) => ({
+      sessions: (day as { sessions: { id: string; sessionType: string; startTime: string; endTime: string; counterNeeded: number; mobileNeeded: number; doctorIds: string; clinic: { name: string } | null }[] }).sessions.map((s) => ({
         id: s.id,
         sessionType: s.sessionType,
         startTime: s.startTime,
         endTime: s.endTime,
-        doctorName: s.doctor?.name,
+        clinicName: s.clinic?.name,
+        doctorIds: JSON.parse(s.doctorIds ?? "[]"),
         counterNeeded: s.counterNeeded,
         mobileNeeded: s.mobileNeeded,
       })),
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
     assistants: assistants.map((a) => ({
       id: a.id,
       name: a.user.name,
-      skills: a.skills,
+      skills: JSON.parse(a.skills as string),
     })),
     leaveRequests: leaveRequests.map((l) => ({
       assistantId: l.assistantId,
@@ -105,7 +106,6 @@ export async function POST(req: NextRequest) {
         clinicSessionId: a.clinicSessionId,
         role: a.role,
       })),
-      skipDuplicates: true,
     });
   }
 

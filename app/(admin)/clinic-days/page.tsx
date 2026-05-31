@@ -14,20 +14,20 @@ export default async function ClinicDaysPage({
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0);
 
-  const clinicDays = await prisma.clinicDay.findMany({
-    where: {
-      date: { gte: startDate, lte: endDate },
-    },
-    include: {
-      sessions: { include: { doctor: true } },
-    },
-    orderBy: { date: "asc" },
-  });
-
-  const doctors = await prisma.doctor.findMany({
-    where: { isActive: true },
-    orderBy: { name: "asc" },
-  });
+  const [clinicDays, doctors, clinics] = await Promise.all([
+    prisma.clinicDay.findMany({
+      where: { date: { gte: startDate, lte: endDate } },
+      include: {
+        sessions: {
+          include: { clinic: true },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+      orderBy: { date: "asc" },
+    }),
+    prisma.doctor.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    prisma.clinic.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+  ]);
 
   return (
     <ClinicDaysView
@@ -35,6 +35,7 @@ export default async function ClinicDaysPage({
       month={month}
       clinicDays={clinicDays}
       doctors={doctors}
+      clinics={clinics}
     />
   );
 }

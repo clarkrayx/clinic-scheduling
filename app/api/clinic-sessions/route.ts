@@ -8,15 +8,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { clinicDayId, sessionType, startTime, endTime, doctorId, counterNeeded, mobileNeeded } = await req.json();
+  const { clinicDayId, clinicId, sessionType, startTime, endTime, doctorIds, counterNeeded, mobileNeeded } = await req.json();
 
   const clinicSession = await prisma.clinicSession.create({
     data: {
       clinicDayId,
+      clinicId: clinicId || null,
       sessionType,
       startTime,
       endTime,
-      doctorId: doctorId || null,
+      doctorIds: JSON.stringify(doctorIds ?? []),
       counterNeeded: counterNeeded ?? 4,
       mobileNeeded: mobileNeeded ?? 4,
     },
