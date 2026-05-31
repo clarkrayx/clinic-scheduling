@@ -55,6 +55,17 @@ const ROLE_LABELS: Record<string, string> = {
 };
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 
+function dateKey(date: Date | string): string {
+  if (date instanceof Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  return date.slice(0, 10);
+}
+
 export default function ScheduleView({
   year,
   month,
@@ -78,7 +89,7 @@ export default function ScheduleView({
   const assignmentsByDate: Record<string, Assignment[]> = {};
   if (schedule) {
     for (const a of schedule.shiftAssignments) {
-      const dateStr = String(a.clinicSession.clinicDay.date).slice(0, 10);
+      const dateStr = dateKey(a.clinicSession.clinicDay.date);
       if (!assignmentsByDate[dateStr]) assignmentsByDate[dateStr] = [];
       assignmentsByDate[dateStr].push(a);
     }
