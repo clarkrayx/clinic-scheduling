@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const endDate = new Date(year, month, 0);
 
   // Fetch all required data
-  const [clinicDays, assistants, leaveRequests, specialRules, doctors] = await Promise.all([
+  const [clinicDays, assistants, preferenceDays, specialRules, doctors] = await Promise.all([
     prisma.clinicDay.findMany({
       where: { date: { gte: startDate, lte: endDate }, isOpen: true },
       include: { sessions: { include: { clinic: true } } },
@@ -28,11 +28,8 @@ export async function POST(req: NextRequest) {
       where: { isActive: true },
       include: { user: true },
     }),
-    prisma.leaveRequest.findMany({
-      where: {
-        date: { gte: startDate, lte: endDate },
-        status: "APPROVED",
-      },
+    prisma.preferenceDay.findMany({
+      where: { year, month },
     }),
     prisma.specialRule.findMany({ where: { isActive: true } }),
     prisma.doctor.findMany({ where: { isActive: true } }),
@@ -68,9 +65,9 @@ export async function POST(req: NextRequest) {
       skills: JSON.parse(a.skills as string),
       maxSessionsPerMonth: (a as unknown as { maxSessionsPerMonth: number | null }).maxSessionsPerMonth ?? null,
     })),
-    leaveRequests: leaveRequests.map((l) => ({
-      assistantId: l.assistantId,
-      date: l.date.toISOString().slice(0, 10),
+    preferenceDays: preferenceDays.map((p) => ({
+      assistantId: p.assistantId,
+      date: p.date.toISOString().slice(0, 10),
     })),
     specialRules: specialRules.map((r) => ({
       title: r.title,

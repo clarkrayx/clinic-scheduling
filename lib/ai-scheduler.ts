@@ -25,7 +25,7 @@ interface ScheduleInput {
     skills: string[];
     maxSessionsPerMonth: number | null;
   }[];
-  leaveRequests: {
+  preferenceDays: {
     assistantId: string;
     date: string;
   }[];
@@ -76,11 +76,11 @@ ${input.assistants
   .map((a) => `- ID: ${a.id}, 姓名: ${a.name}, 技能: ${a.skills.join(", ") || "通用"}${a.maxSessionsPerMonth ? `, 每月上限: ${a.maxSessionsPerMonth}診` : ""}`)
   .join("\n")}
 
-## 請假申請（這些日期不能排班）
+## 助理劃假（希望休假的日期，盡量避開但人力不足時仍可排班）
 ${
-  input.leaveRequests.length === 0
-    ? "（無請假）"
-    : input.leaveRequests.map((l) => `- 助理ID: ${l.assistantId}, 日期: ${l.date}`).join("\n")
+  input.preferenceDays.length === 0
+    ? "（無劃假）"
+    : input.preferenceDays.map((p) => `- 助理ID: ${p.assistantId}, 日期: ${p.date}`).join("\n")
 }
 
 ## 特殊規則
@@ -110,7 +110,7 @@ ${input.clinicDays
 2. 每週至少休息 2 天
 3. 避免同一位助理連續排超過 5 天
 4. 公平分配，讓每位助理的班數盡量均等
-5. 有請假的日期不排班
+5. 助理有劃假的日期盡量避開排班，但若人力不足仍可安排（軟性約束，非強制）
 6. 技能要匹配（counter 技能排櫃檯，mobile 技能排機動）
 7. 若助理名單中有設定「每月上限」，該助理本月的總診次數不得超過此上限
 

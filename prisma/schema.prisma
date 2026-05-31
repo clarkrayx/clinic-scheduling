@@ -56,6 +56,7 @@ model Assistant {
 
   shiftAssignments ShiftAssignment[]
   leaveRequests    LeaveRequest[]
+  preferenceDays   PreferenceDay[]
 }
 
 model ClinicDay {
@@ -128,6 +129,19 @@ model LeaveRequest {
   reviewedBy  String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model PreferenceDay {
+  id          String    @id @default(cuid())
+  assistantId String
+  assistant   Assistant @relation(fields: [assistantId], references: [id])
+  date        DateTime  @db.Date
+  year        Int
+  month       Int
+  reason      String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([assistantId, date])
 }
 
 model SpecialRule {

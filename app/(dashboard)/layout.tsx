@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import Sidebar from "@/components/Sidebar";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -22,12 +23,22 @@ export default async function DashboardLayout({
   const isAdmin =
     session.user.role === "ADMIN" || session.user.role === "MANAGER";
 
+  let assistantId: string | null = null;
+  if (!isAdmin) {
+    const assistant = await prisma.assistant.findFirst({
+      where: { userId: session.user.id },
+      select: { id: true },
+    });
+    assistantId = assistant?.id ?? null;
+  }
+
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
       <Sidebar
         userName={session.user.name ?? "使用者"}
         userRole={ROLE_LABELS[session.user.role ?? "ASSISTANT"] ?? "助理"}
         isAdmin={isAdmin}
+        assistantId={assistantId}
       />
       <main
         style={{
