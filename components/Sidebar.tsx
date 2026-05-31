@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { getDaysInMonth, startOfMonth, addMonths } from "date-fns";
+import { signOut } from "next-auth/react";
 
 const NAV_ITEMS = [
   { href: "/schedule", icon: CalendarIcon, label: "月排班" },
@@ -343,7 +344,7 @@ export default function Sidebar({ userName, userRole, isAdmin, assistantId }: Si
         >
           {initials}
         </div>
-        <div style={{ lineHeight: 1.25, minWidth: 0 }}>
+        <div style={{ lineHeight: 1.25, minWidth: 0, flex: 1 }}>
           <div
             style={{
               fontSize: 13.5,
@@ -358,6 +359,36 @@ export default function Sidebar({ userName, userRole, isAdmin, assistantId }: Si
           </div>
           <div style={{ fontSize: 11.5, color: "var(--fg3)" }}>{userRole}</div>
         </div>
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          title="登出"
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: "var(--radius-sm)",
+            border: "1px solid var(--border)",
+            background: "transparent",
+            cursor: "pointer",
+            color: "var(--fg3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            transition: "background .15s, color .15s",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "#fef0f0";
+            (e.currentTarget as HTMLButtonElement).style.color = "#c97070";
+            (e.currentTarget as HTMLButtonElement).style.borderColor = "#e0b0b0";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--fg3)";
+            (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)";
+          }}
+        >
+          <LogOutIcon size={15} />
+        </button>
       </div>
     </aside>
   );
@@ -419,6 +450,16 @@ function SparklesIcon({ size = 20 }: { size?: number }) {
       <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z" />
       <path d="M5 3l.75 2.25L8 6l-2.25.75L5 9l-.75-2.25L2 6l2.25-.75z" />
       <path d="M19 15l.75 2.25L22 18l-2.25.75L19 21l-.75-2.25L16 18l2.25-.75z" />
+    </svg>
+  );
+}
+
+function LogOutIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   );
 }
