@@ -9,6 +9,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
 
   const { id } = await params;
+
+  // Delete shift assignments referencing this session before deleting the session
+  await prisma.shiftAssignment.deleteMany({ where: { clinicSessionId: id } });
   await prisma.clinicSession.delete({ where: { id } });
+
   return NextResponse.json({ ok: true });
 }

@@ -10,7 +10,19 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   const { id } = await params;
 
-  // Delete sessions first
+  // Find all sessions for this day
+  const sessions = await prisma.clinicSession.findMany({
+    where: { clinicDayId: id },
+    select: { id: true },
+  });
+  const sessionIds = sessions.map((s) => s.id);
+
+  // Delete in order: shift assignments → sessions → clinic day
+  if (sessionIds.length > 0) {
+    await prisma.shiftAssignment.deleteMany({
+      where: { clinicSessionId: { in: sessionIds } },
+    });
+  }
   await prisma.clinicSession.deleteMany({ where: { clinicDayId: id } });
   await prisma.clinicDay.delete({ where: { id } });
 
