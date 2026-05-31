@@ -107,7 +107,7 @@ export default function LoginPage() {
                 color: "var(--fg1)",
               }}
             >
-              排班助理
+              品叡品沐
             </div>
             <div
               style={{
@@ -117,7 +117,7 @@ export default function LoginPage() {
                 color: "var(--sage-500)",
               }}
             >
-              SHIFT ASSISTANT
+              PINRAY DENTAL CARE
             </div>
           </div>
         </div>
