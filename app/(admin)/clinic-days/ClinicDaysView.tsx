@@ -134,10 +134,22 @@ export default function ClinicDaysView({ year, month, clinicDays, doctors, clini
   async function addSession(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedDate) return;
-    const clinicDayId = dayMap[selectedDate]?.id ?? pendingClinicDayId;
-    if (!clinicDayId) return;
 
     setSubmitting(true);
+
+    // If clinic day doesn't exist yet, create it first
+    let clinicDayId = dayMap[selectedDate]?.id ?? pendingClinicDayId;
+    if (!clinicDayId) {
+      const res = await fetch("/api/clinic-days", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: selectedDate }),
+      });
+      const newDay = await res.json();
+      clinicDayId = newDay.id;
+      setPendingClinicDayId(newDay.id);
+    }
+    if (!clinicDayId) { setSubmitting(false); return; }
     await fetch("/api/clinic-sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
