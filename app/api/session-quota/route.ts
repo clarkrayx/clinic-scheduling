@@ -31,12 +31,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { assistantId, year, month, sessions, leaveSessions } = await req.json();
+  const { assistantId, year, month, sessions, leaveSessions, leaveNote } = await req.json();
 
   const quota = await prisma.monthlySessionQuota.upsert({
     where: { assistantId_year_month: { assistantId, year, month } },
-    update: { sessions, leaveSessions: leaveSessions ?? 0 },
-    create: { assistantId, year, month, sessions, leaveSessions: leaveSessions ?? 0 },
+    update: { sessions, leaveSessions: leaveSessions ?? 0, leaveNote: leaveNote ?? null },
+    create: { assistantId, year, month, sessions, leaveSessions: leaveSessions ?? 0, leaveNote: leaveNote ?? null },
   });
 
   return NextResponse.json(quota);

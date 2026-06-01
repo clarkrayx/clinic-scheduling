@@ -33,6 +33,7 @@ export default async function SessionQuotaPage({
         name: a.user.name,
         sessions: quotaMap[a.id]?.sessions ?? 0,
         leaveSessions: quotaMap[a.id]?.leaveSessions ?? 0,
+        leaveNote: quotaMap[a.id]?.leaveNote ?? "",
       }))}
     />
   );

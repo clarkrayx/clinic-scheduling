@@ -168,6 +168,7 @@ model MonthlySessionQuota {
   month         Int
   sessions      Int       @default(0)
   leaveSessions Int       @default(0)
+  leaveNote     String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

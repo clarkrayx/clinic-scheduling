@@ -8,6 +8,7 @@ interface AssistantRow {
   name: string;
   sessions: number;
   leaveSessions: number;
+  leaveNote: string;
 }
 
 interface Props {
@@ -25,12 +26,14 @@ export default function SessionQuotaView({ year, month, assistants }: Props) {
     : 0;
   const [globalSessions, setGlobalSessions] = useState(defaultSessions);
 
-  // Per-assistant sessions (overrideable from global)
   const [sessions, setSessions] = useState<Record<string, number>>(
     Object.fromEntries(assistants.map((a) => [a.id, a.sessions]))
   );
   const [leaveValues, setLeaveValues] = useState<Record<string, number>>(
     Object.fromEntries(assistants.map((a) => [a.id, a.leaveSessions]))
+  );
+  const [leaveNotes, setLeaveNotes] = useState<Record<string, string>>(
+    Object.fromEntries(assistants.map((a) => [a.id, a.leaveNote]))
   );
 
   const [saving, setSaving] = useState(false);
@@ -43,7 +46,6 @@ export default function SessionQuotaView({ year, month, assistants }: Props) {
     router.push(`/session-quota?year=${y}&month=${m}`);
   }
 
-  // When global sessions changes, update all assistant rows
   function handleGlobalChange(val: number) {
     setGlobalSessions(val);
     setSessions(Object.fromEntries(assistants.map((a) => [a.id, val])));
@@ -60,6 +62,7 @@ export default function SessionQuotaView({ year, month, assistants }: Props) {
             assistantId: a.id, year, month,
             sessions: sessions[a.id] ?? 0,
             leaveSessions: leaveValues[a.id] ?? 0,
+            leaveNote: leaveNotes[a.id] ?? "",
           }),
         })
       )
@@ -70,12 +73,8 @@ export default function SessionQuotaView({ year, month, assistants }: Props) {
     router.refresh();
   }
 
-  const totalSessions = Object.values(sessions).reduce((s, v) => s + v, 0);
-  const totalLeave = Object.values(leaveValues).reduce((s, v) => s + v, 0);
-  const totalActual = totalSessions - totalLeave;
-
   return (
-    <div style={{ padding: "28px 32px 40px", maxWidth: 960 }}>
+    <div style={{ padding: "28px 32px 40px", maxWidth: 1040 }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
@@ -118,22 +117,15 @@ export default function SessionQuotaView({ year, month, assistants }: Props) {
         </span>
       </div>
 
-      {/* Summary bar */}
-      <div style={{ padding: "12px 18px", background: "var(--brand-soft)", borderRadius: "var(--radius-md)", marginBottom: 20, display: "flex", gap: 28, flexWrap: "wrap", fontSize: 13.5, color: "var(--sage-700)", fontWeight: 600 }}>
-        <span>本月總診次：{totalSessions} 診</span>
-        <span>合計請假：{totalLeave} 診</span>
-        <span>合計實際上班：{totalActual} 診</span>
-        <span style={{ color: "var(--fg3)", fontWeight: 400 }}>共 {assistants.length} 位助理</span>
-      </div>
-
       {/* Table */}
       <div style={{ background: "var(--bg-raised)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", overflow: "hidden", marginBottom: 20 }}>
         {/* Table header */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 140px 140px 140px", padding: "12px 20px", background: "#f8f8f5", borderBottom: "1px solid var(--border)", fontSize: 12.5, fontWeight: 700, color: "var(--fg3)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 110px 110px 120px 1.4fr", padding: "12px 20px", background: "#f8f8f5", borderBottom: "1px solid var(--border)", fontSize: 12.5, fontWeight: 700, color: "var(--fg3)" }}>
           <span>助理姓名</span>
           <span style={{ textAlign: "center" }}>當月診次</span>
           <span style={{ textAlign: "center" }}>請假診次</span>
           <span style={{ textAlign: "center" }}>實際上班診次</span>
+          <span>備注（假別）</span>
         </div>
 
         {assistants.length === 0 ? (
@@ -146,7 +138,7 @@ export default function SessionQuotaView({ year, month, assistants }: Props) {
 
             return (
               <div key={ast.id} style={{
-                display: "grid", gridTemplateColumns: "1fr 140px 140px 140px",
+                display: "grid", gridTemplateColumns: "1fr 110px 110px 120px 1.4fr",
                 padding: "14px 20px", borderBottom: idx < assistants.length - 1 ? "1px solid var(--border)" : "none", alignItems: "center",
               }}>
                 {/* Name */}
@@ -157,28 +149,24 @@ export default function SessionQuotaView({ year, month, assistants }: Props) {
                   <span style={{ fontSize: 14, fontWeight: 600, color: "var(--fg1)" }}>{ast.name}</span>
                 </div>
 
-                {/* 當月診次 — individual override */}
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 5 }}>
+                {/* 當月診次 */}
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 4 }}>
                   <input
-                    type="number"
-                    min={0}
-                    max={60}
+                    type="number" min={0} max={60}
                     value={sessionVal}
                     onChange={(e) => setSessions((prev) => ({ ...prev, [ast.id]: parseInt(e.target.value) || 0 }))}
-                    style={{ width: 65, height: 36, textAlign: "center", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", background: "var(--bg)", fontSize: 15, fontWeight: 600, color: "var(--fg1)", outline: "none" }}
+                    style={{ width: 58, height: 36, textAlign: "center", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", background: "var(--bg)", fontSize: 15, fontWeight: 600, color: "var(--fg1)", outline: "none" }}
                   />
                   <span style={{ fontSize: 12, color: "var(--fg3)" }}>診</span>
                 </div>
 
                 {/* 請假診次 */}
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 5 }}>
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 4 }}>
                   <input
-                    type="number"
-                    min={0}
-                    max={sessionVal}
+                    type="number" min={0} max={sessionVal}
                     value={leaveVal}
                     onChange={(e) => setLeaveValues((prev) => ({ ...prev, [ast.id]: parseInt(e.target.value) || 0 }))}
-                    style={{ width: 65, height: 36, textAlign: "center", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", background: "var(--bg)", fontSize: 15, fontWeight: 600, color: leaveVal > 0 ? "var(--rose-600)" : "var(--fg1)", outline: "none" }}
+                    style={{ width: 58, height: 36, textAlign: "center", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", background: "var(--bg)", fontSize: 15, fontWeight: 600, color: leaveVal > 0 ? "var(--rose-600)" : "var(--fg1)", outline: "none" }}
                     placeholder="0"
                   />
                   <span style={{ fontSize: 12, color: "var(--fg3)" }}>診</span>
@@ -186,13 +174,21 @@ export default function SessionQuotaView({ year, month, assistants }: Props) {
 
                 {/* 實際上班診次 */}
                 <div style={{ textAlign: "center" }}>
-                  <span style={{
-                    fontSize: 18, fontWeight: 800, color: actual > 0 ? "var(--sage-600)" : "var(--fg3)",
-                    fontFamily: "var(--font-display)",
-                  }}>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: actual > 0 ? "var(--sage-600)" : "var(--fg3)", fontFamily: "var(--font-display)" }}>
                     {actual}
                   </span>
                   <span style={{ fontSize: 12, color: "var(--fg3)", marginLeft: 3 }}>診</span>
+                </div>
+
+                {/* 備注（假別） */}
+                <div>
+                  <input
+                    type="text"
+                    value={leaveNotes[ast.id] ?? ""}
+                    onChange={(e) => setLeaveNotes((prev) => ({ ...prev, [ast.id]: e.target.value }))}
+                    placeholder="例：特休 2 診、事假 1 診"
+                    style={{ width: "100%", height: 36, padding: "0 12px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", background: "var(--bg)", fontSize: 13.5, color: "var(--fg1)", outline: "none", boxSizing: "border-box" }}
+                  />
                 </div>
               </div>
             );
