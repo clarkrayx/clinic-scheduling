@@ -39,18 +39,23 @@
   --sage-900: #333C36;
 
   /* Morandi accents */
+  --rose-50: #FAF4F3;
   --rose-100: #F2E6E5;
   --rose-300: #DCBEBC;
+  --rose-400: #CDADAB;
   --rose-500: #C39B99;
+  --rose-600: #B08886;
   --rose-700: #9E726F;
 
   --clay-100: #F3EAE1;
   --clay-300: #DCC3AC;
+  --clay-400: #CFB199;
   --clay-500: #C3A083;
   --clay-700: #9C7858;
 
   --mist-100: #E9EEF1;
   --mist-300: #BFCDD4;
+  --mist-400: #A9BBC3;
   --mist-500: #93A8B2;
   --mist-700: #6A828D;
 

@@ -141,7 +141,7 @@ export default function PreferenceView({ year, month, assistantId, preferenceDay
                 </button>
                 <button
                   onClick={confirmMark}
-                  style={{ height: 36, padding: "0 18px", borderRadius: "var(--radius-sm)", background: "var(--rose-400)", color: "white", border: "none", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
+                  style={{ height: 36, padding: "0 18px", borderRadius: "var(--radius-sm)", background: "var(--rose-500)", color: "white", border: "none", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
                 >
                   儲存
                 </button>
