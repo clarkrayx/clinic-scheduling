@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { getDaysInMonth, startOfMonth } from "date-fns";
 import { useState } from "react";
+import * as XLSX from "xlsx";
 
 interface Assignment {
   id: string;
@@ -143,6 +144,39 @@ export default function ScheduleView({
     router.push(`/schedule?year=${y}&month=${m}`);
   }
 
+  function exportToExcel() {
+    if (!schedule) return;
+
+    // Build rows: one row per assignment
+    const SESSION_LABEL: Record<string, string> = { morning: "早診", afternoon: "午診", evening: "晚診" };
+    const ROLE_LABEL: Record<string, string> = { counter: "櫃檯", mobile: "機動" };
+
+    const rows = schedule.shiftAssignments.map((a) => ({
+      日期: dateKey(a.clinicSession.clinicDay.date),
+      診別: SESSION_LABEL[a.clinicSession.sessionType] ?? a.clinicSession.sessionType,
+      診所: a.clinicSession.clinic?.name ?? "",
+      助理: a.assistant.user.name,
+      職位: ROLE_LABEL[a.role] ?? a.role,
+    }));
+
+    // Sort by date then session type then clinic
+    const order = ["morning", "afternoon", "evening"];
+    rows.sort((a, b) => {
+      if (a.日期 !== b.日期) return a.日期.localeCompare(b.日期);
+      return order.indexOf(Object.keys(SESSION_LABEL).find(k => SESSION_LABEL[k] === a.診別) ?? "") -
+             order.indexOf(Object.keys(SESSION_LABEL).find(k => SESSION_LABEL[k] === b.診別) ?? "");
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `${year}年${month}月班表`);
+
+    // Auto column widths
+    ws["!cols"] = [{ wch: 12 }, { wch: 6 }, { wch: 10 }, { wch: 8 }, { wch: 6 }];
+
+    XLSX.writeFile(wb, `品叡品沐_${year}年${month}月班表.xlsx`);
+  }
+
   async function handleDeleteSchedule() {
     if (!schedule) return;
     setDeleting(true);
@@ -233,6 +267,19 @@ export default function ScheduleView({
             {month} 月
           </span>
           <button onClick={() => navigate(1)} style={navBtnStyle}>›</button>
+          {isAdmin && schedule && (
+            <button
+              onClick={exportToExcel}
+              style={{
+                height: 38, padding: "0 14px", borderRadius: "var(--radius-md)",
+                background: "transparent", color: "var(--mist-700, #2a6080)",
+                border: "1.5px solid var(--mist-300, #90b8cc)", fontSize: 13.5, fontWeight: 600,
+                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
+              }}
+            >
+              ⬇ 匯出 Excel
+            </button>
+          )}
           {isAdmin && schedule && (
             <button
               onClick={() => setConfirmDelete(true)}

@@ -276,11 +276,17 @@ export default function ClinicDaysView({ year, month, clinicDays, doctors, clini
             const isSelected = selectedDate === dateStr;
             const sessions = clinicDay?.sessions ?? [];
 
-            // Get unique clinics with session counts
-            const clinicSessionCounts: Record<string, number> = {};
+            // Group sessions by clinic, sorted by session type order
+            const SESSION_ORDER = ["morning", "afternoon", "evening"];
+            const clinicSessionGroups: Record<string, { sessionType: string }[]> = {};
             for (const s of sessions) {
               const key = s.clinicId ?? "none";
-              clinicSessionCounts[key] = (clinicSessionCounts[key] ?? 0) + 1;
+              if (!clinicSessionGroups[key]) clinicSessionGroups[key] = [];
+              clinicSessionGroups[key].push({ sessionType: s.sessionType });
+            }
+            // Sort each clinic's sessions by type order
+            for (const key of Object.keys(clinicSessionGroups)) {
+              clinicSessionGroups[key].sort((a, b) => SESSION_ORDER.indexOf(a.sessionType) - SESSION_ORDER.indexOf(b.sessionType));
             }
 
             return (
@@ -306,16 +312,16 @@ export default function ClinicDaysView({ year, month, clinicDays, doctors, clini
                   {day}
                 </span>
                 <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}>
-                  {Object.entries(clinicSessionCounts).map(([clinicId, count]) => {
+                  {Object.entries(clinicSessionGroups).map(([clinicId, sessGroup]) => {
                     const c = clinics.find((cl) => cl.id === clinicId);
-                    return (
-                      <div key={clinicId} style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                    return sessGroup.map((s, si) => (
+                      <div key={`${clinicId}-${si}`} style={{ display: "flex", alignItems: "center", gap: 3 }}>
                         <span style={{ width: 7, height: 7, borderRadius: 2, background: c?.color ?? "var(--neutral-400)", flexShrink: 0 }} />
                         <span style={{ fontSize: 10, color: "var(--fg3)", fontWeight: 600 }}>
-                          {c?.shortName ?? "?"} {count}診
+                          {c?.shortName ?? "?"}{SESSION_LABELS[s.sessionType] ?? s.sessionType}
                         </span>
                       </div>
-                    );
+                    ));
                   })}
                 </div>
               </button>
@@ -363,7 +369,7 @@ export default function ClinicDaysView({ year, month, clinicDays, doctors, clini
                             <div key={session.id} style={{ padding: "10px 12px", borderRadius: "var(--radius-md)", background: colors.bg, borderLeft: `3px solid ${colors.border}`, marginBottom: 6 }}>
                               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                                 <span style={{ fontWeight: 700, fontSize: 13.5, color: "var(--fg1)" }}>
-                                  {SESSION_LABELS[session.sessionType]} · {session.startTime}–{session.endTime}
+                                  {SESSION_LABELS[session.sessionType]}
                                 </span>
                                 <button onClick={() => deleteSession(session.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
                               </div>
@@ -445,17 +451,7 @@ export default function ClinicDaysView({ year, month, clinicDays, doctors, clini
                   </div>
                 </div>
 
-                {/* Time */}
-                <div style={{ display: "flex", gap: 10 }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={labelStyle}>開始時間</label>
-                    <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={inputStyle} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={labelStyle}>結束時間</label>
-                    <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inputStyle} />
-                  </div>
-                </div>
+                {/* Time is auto-set by session type */}
 
                 {/* Multiple doctors */}
                 <div>

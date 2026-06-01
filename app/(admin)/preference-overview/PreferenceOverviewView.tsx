@@ -32,6 +32,7 @@ interface PreferenceDay {
   assistantName: string;
   date: Date | string;
   sessionType: string;
+  reason: string | null;
 }
 
 interface Props {
@@ -60,13 +61,13 @@ export default function PreferenceOverviewView({ year, month, assistants, prefer
     router.push(`/preference-overview?year=${y}&month=${m}`);
   }
 
-  // byDay[day] = { assistantId -> Set<sessionKey> }
-  const byDay: Record<number, Record<string, Set<string>>> = {};
+  // byDay[day] = { assistantId -> Map<sessionKey, reason> }
+  const byDay: Record<number, Record<string, Map<string, string | null>>> = {};
   for (const p of preferenceDays) {
     const d = dayOfDate(p.date);
     if (!byDay[d]) byDay[d] = {};
-    if (!byDay[d][p.assistantId]) byDay[d][p.assistantId] = new Set();
-    byDay[d][p.assistantId].add(p.sessionType);
+    if (!byDay[d][p.assistantId]) byDay[d][p.assistantId] = new Map();
+    byDay[d][p.assistantId].set(p.sessionType, p.reason ?? null);
   }
 
   // 每位助理的統計（各診別各幾個）
@@ -174,7 +175,7 @@ export default function PreferenceOverviewView({ year, month, assistants, prefer
                     {day}
                   </span>
                   <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                    {Object.entries(dayData).map(([astId, sessions]) => {
+                    {Object.entries(dayData).map(([astId, sessionMap]) => {
                       const ast = assistants.find((a) => a.id === astId);
                       if (!ast) return null;
                       return (
@@ -182,14 +183,23 @@ export default function PreferenceOverviewView({ year, month, assistants, prefer
                           <span style={{ fontSize: 10.5, color: "var(--fg2)", fontWeight: 600, whiteSpace: "nowrap" }}>
                             {ast.name.slice(-2)}
                           </span>
-                          {SESSIONS.filter((s) => sessions.has(s.key)).map((s) => (
-                            <span key={s.key} style={{
-                              padding: "0 4px", borderRadius: 3, fontSize: 10, fontWeight: 700,
-                              background: SESSION_BG[s.key], color: SESSION_COLOR[s.key],
-                            }}>
-                              {s.label}
-                            </span>
-                          ))}
+                          {SESSIONS.filter((s) => sessionMap.has(s.key)).map((s) => {
+                            const reason = sessionMap.get(s.key);
+                            return (
+                              <span
+                                key={s.key}
+                                title={reason ? `${ast.name} ${s.label}：${reason}` : `${ast.name} ${s.label}`}
+                                style={{
+                                  padding: "0 4px", borderRadius: 3, fontSize: 10, fontWeight: 700,
+                                  background: SESSION_BG[s.key], color: SESSION_COLOR[s.key],
+                                  cursor: reason ? "help" : "default",
+                                  textDecoration: reason ? "underline dotted" : "none",
+                                }}
+                              >
+                                {s.label}
+                              </span>
+                            );
+                          })}
                         </div>
                       );
                     })}

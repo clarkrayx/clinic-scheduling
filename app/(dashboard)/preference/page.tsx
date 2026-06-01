@@ -50,6 +50,7 @@ export default async function PreferencePage({
       preferenceDays={preferenceDays.map((p) => ({
         date: p.date,
         sessionType: p.sessionType,
+        reason: p.reason,
       }))}
     />
   );

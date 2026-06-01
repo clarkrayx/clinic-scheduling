@@ -15,6 +15,7 @@ type SessionKey = "morning" | "afternoon" | "evening";
 interface PreferenceDay {
   date: Date | string;
   sessionType: string;
+  reason: string | null;
 }
 
 interface Props {
@@ -42,16 +43,19 @@ function markedKey(date: string, session: SessionKey) {
 
 export default function PreferenceView({ year, month, assistantId, preferenceDays }: Props) {
   const router = useRouter();
-  const [busy, setBusy] = useState<string | null>(null); // "date:session" being toggled
+  const [busy, setBusy] = useState<string | null>(null);
 
-  const marked = new Set(
-    preferenceDays.map((p) => markedKey(dateKey(p.date), p.sessionType as SessionKey))
+  // reason modal state
+  const [pendingMark, setPendingMark] = useState<{ dateStr: string; session: SessionKey } | null>(null);
+  const [reasonInput, setReasonInput] = useState("");
+
+  const markedMap = new Map(
+    preferenceDays.map((p) => [markedKey(dateKey(p.date), p.sessionType as SessionKey), p.reason ?? ""])
   );
-
-  const totalMarked = marked.size;
 
   const daysInMonth = getDaysInMonth(new Date(year, month - 1));
   const firstDayOfWeek = startOfMonth(new Date(year, month - 1)).getDay();
+  const totalMarked = markedMap.size;
 
   function navigate(dir: number) {
     let y = year, m = month + dir;
@@ -60,54 +64,87 @@ export default function PreferenceView({ year, month, assistantId, preferenceDay
     router.push(`/preference?year=${y}&month=${m}`);
   }
 
-  const toggleSession = useCallback(async (dateStr: string, session: SessionKey) => {
+  function handleDayClick(dateStr: string, session: SessionKey) {
     const key = markedKey(dateStr, session);
     if (busy) return;
-    setBusy(key);
-
-    if (marked.has(key)) {
-      await fetch(`/api/preference-days/${dateStr}?assistantId=${assistantId}&sessionType=${session}`, {
-        method: "DELETE",
-      });
+    if (markedMap.has(key)) {
+      // Unmark directly
+      doUnmark(dateStr, session);
     } else {
-      await fetch("/api/preference-days", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: dateStr, sessionType: session, assistantId }),
-      });
+      // Show reason modal
+      setPendingMark({ dateStr, session });
+      setReasonInput("");
     }
+  }
 
+  const doUnmark = useCallback(async (dateStr: string, session: SessionKey) => {
+    const key = markedKey(dateStr, session);
+    setBusy(key);
+    await fetch(`/api/preference-days/${dateStr}?assistantId=${assistantId}&sessionType=${session}`, { method: "DELETE" });
     setBusy(null);
     router.refresh();
-  }, [busy, marked, assistantId, router]);
+  }, [assistantId, router]);
+
+  async function confirmMark() {
+    if (!pendingMark) return;
+    const { dateStr, session } = pendingMark;
+    const key = markedKey(dateStr, session);
+    setBusy(key);
+    setPendingMark(null);
+    await fetch("/api/preference-days", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: dateStr, sessionType: session, assistantId, reason: reasonInput }),
+    });
+    setBusy(null);
+    router.refresh();
+  }
 
   return (
     <div style={{ padding: "28px 32px 40px" }}>
+      {/* Reason modal */}
+      {pendingMark && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+          <div style={{ background: "white", borderRadius: "var(--radius-lg)", padding: "28px 32px", maxWidth: 400, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,.15)" }}>
+            <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "var(--fg1)" }}>
+              標記 {pendingMark.dateStr.slice(5)} {SESSIONS.find(s => s.key === pendingMark.session)?.label} 為希望休假
+            </h3>
+            <p style={{ fontSize: 13, color: "var(--fg3)", margin: "0 0 16px" }}>請填寫請假理由（選填）</p>
+            <textarea
+              value={reasonInput}
+              onChange={(e) => setReasonInput(e.target.value)}
+              rows={3}
+              placeholder="例：出遊、家事、身體不適..."
+              autoFocus
+              style={{ width: "100%", padding: "10px 12px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", background: "var(--bg)", fontSize: 14, color: "var(--fg1)", outline: "none", resize: "vertical" }}
+            />
+            <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "flex-end" }}>
+              <button onClick={() => setPendingMark(null)} style={{ height: 36, padding: "0 14px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "transparent", color: "var(--fg2)", fontSize: 13.5, cursor: "pointer" }}>
+                取消
+              </button>
+              <button onClick={confirmMark} style={{ height: 36, padding: "0 16px", borderRadius: "var(--radius-sm)", background: "var(--rose-400)", color: "white", border: "none", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+                確認劃假
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, color: "var(--fg1)", margin: 0 }}>
-            劃假月曆
-          </h1>
-          <p style={{ fontSize: 14, color: "var(--fg3)", margin: "4px 0 0" }}>
-            點選日期的診別來標記希望休假，排班時會盡量參考（非保證）
-          </p>
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, color: "var(--fg1)", margin: 0 }}>劃假月曆</h1>
+          <p style={{ fontSize: 14, color: "var(--fg3)", margin: "4px 0 0" }}>點選日期的診別來標記希望休假，需填寫理由</p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button onClick={() => navigate(-1)} style={navBtnStyle}>‹</button>
-          <span style={{ fontSize: 15, fontWeight: 700, color: "var(--fg1)", minWidth: 90, textAlign: "center" }}>
-            {year} 年 {month} 月
-          </span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "var(--fg1)", minWidth: 90, textAlign: "center" }}>{year} 年 {month} 月</span>
           <button onClick={() => navigate(1)} style={navBtnStyle}>›</button>
         </div>
       </div>
 
-      {/* Legend + count */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 16, padding: "10px 16px",
-        background: "var(--surface-tint)", borderRadius: "var(--radius-md)",
-        margin: "0 0 18px", fontSize: 13, color: "var(--fg2)", flexWrap: "wrap",
-      }}>
+      {/* Legend */}
+      <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "10px 16px", background: "var(--surface-tint)", borderRadius: "var(--radius-md)", margin: "0 0 18px", fontSize: 13, color: "var(--fg2)", flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 10 }}>
           {SESSIONS.map((s) => (
             <span key={s.key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -117,18 +154,13 @@ export default function PreferenceView({ year, month, assistantId, preferenceDay
           ))}
         </div>
         <span style={{ color: "var(--fg3)" }}>·</span>
-        <span style={{ fontWeight: 600, color: totalMarked > 0 ? "var(--rose-600)" : "var(--fg3)" }}>
-          已標記 {totalMarked} 個診別
-        </span>
+        <span style={{ fontWeight: 600, color: totalMarked > 0 ? "var(--rose-600)" : "var(--fg3)" }}>已標記 {totalMarked} 個診別</span>
       </div>
 
       {/* Weekday headers */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, marginBottom: 6 }}>
         {WEEKDAYS.map((d, i) => (
-          <div key={d} style={{
-            textAlign: "center", fontSize: 12, fontWeight: 600, padding: "4px 0",
-            color: i === 0 || i === 6 ? "var(--rose-500)" : "var(--fg3)",
-          }}>{d}</div>
+          <div key={d} style={{ textAlign: "center", fontSize: 12, fontWeight: 600, padding: "4px 0", color: i === 0 || i === 6 ? "var(--rose-500)" : "var(--fg3)" }}>{d}</div>
         ))}
       </div>
 
@@ -140,59 +172,21 @@ export default function PreferenceView({ year, month, assistantId, preferenceDay
           const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
           const dayOfWeek = (firstDayOfWeek + i) % 7;
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-          const markedSessions = SESSIONS.filter((s) => marked.has(markedKey(dateStr, s.key)));
+          const markedSessions = SESSIONS.filter((s) => markedMap.has(markedKey(dateStr, s.key)));
           const hasAny = markedSessions.length > 0;
 
           return (
-            <div
-              key={day}
-              style={{
-                minHeight: 90,
-                borderRadius: "var(--radius-md)",
-                border: hasAny ? "1.5px solid var(--rose-300)" : "1px solid var(--border)",
-                background: hasAny ? "var(--rose-50, #fff8f8)" : "var(--bg-raised)",
-                padding: "8px 6px",
-                display: "flex",
-                flexDirection: "column",
-                gap: 5,
-              }}
-            >
-              {/* Day number */}
-              <span style={{
-                fontSize: 13, fontWeight: 600, alignSelf: "flex-end",
-                color: isWeekend ? "var(--rose-500)" : "var(--fg2)",
-              }}>
-                {day}
-              </span>
-
-              {/* Session buttons */}
+            <div key={day} style={{ minHeight: 90, borderRadius: "var(--radius-md)", border: hasAny ? "1.5px solid var(--rose-300)" : "1px solid var(--border)", background: hasAny ? "var(--rose-50, #fff8f8)" : "var(--bg-raised)", padding: "8px 6px", display: "flex", flexDirection: "column", gap: 5 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, alignSelf: "flex-end", color: isWeekend ? "var(--rose-500)" : "var(--fg2)" }}>{day}</span>
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 {SESSIONS.map((s) => {
                   const key = markedKey(dateStr, s.key);
-                  const isMarked = marked.has(key);
+                  const isMarked = markedMap.has(key);
                   const isBusy = busy === key;
+                  const reason = markedMap.get(key);
 
                   return (
-                    <button
-                      key={s.key}
-                      onClick={() => toggleSession(dateStr, s.key)}
-                      disabled={isBusy || busy !== null}
-                      title={isMarked ? `取消 ${s.label} 劃假` : `標記 ${s.label} 為希望休假`}
-                      style={{
-                        width: "100%",
-                        height: 22,
-                        borderRadius: 5,
-                        border: isMarked ? `1.5px solid ${SESSION_BORDER[s.key]}` : "1px solid var(--border)",
-                        background: isMarked ? SESSION_BG[s.key] : "transparent",
-                        color: isMarked ? SESSION_COLOR[s.key] : "var(--fg3)",
-                        fontSize: 11,
-                        fontWeight: isMarked ? 700 : 400,
-                        cursor: busy !== null ? "wait" : "pointer",
-                        transition: "all .12s",
-                        opacity: isBusy ? 0.5 : 1,
-                        padding: 0,
-                      }}
-                    >
+                    <button key={s.key} onClick={() => handleDayClick(dateStr, s.key)} disabled={isBusy || busy !== null} title={isMarked && reason ? `理由：${reason}` : undefined} style={{ width: "100%", height: 22, borderRadius: 5, border: isMarked ? `1.5px solid ${SESSION_BORDER[s.key]}` : "1px solid var(--border)", background: isMarked ? SESSION_BG[s.key] : "transparent", color: isMarked ? SESSION_COLOR[s.key] : "var(--fg3)", fontSize: 11, fontWeight: isMarked ? 700 : 400, cursor: busy !== null ? "wait" : "pointer", transition: "all .12s", opacity: isBusy ? 0.5 : 1, padding: 0 }}>
                       {s.label}
                     </button>
                   );
@@ -206,25 +200,7 @@ export default function PreferenceView({ year, month, assistantId, preferenceDay
   );
 }
 
-const SESSION_BG: Record<SessionKey, string> = {
-  morning: "var(--clay-100, #f5ebe0)",
-  afternoon: "var(--mist-100, #e8f0f5)",
-  evening: "var(--rose-100, #fce8e8)",
-};
-const SESSION_BORDER: Record<SessionKey, string> = {
-  morning: "var(--clay-300, #d4a87a)",
-  afternoon: "var(--mist-300, #90b8cc)",
-  evening: "var(--rose-300, #e8a0a0)",
-};
-const SESSION_COLOR: Record<SessionKey, string> = {
-  morning: "var(--clay-700, #7a4f28)",
-  afternoon: "var(--mist-700, #2a6080)",
-  evening: "var(--rose-700, #8a3030)",
-};
-
-const navBtnStyle: React.CSSProperties = {
-  width: 34, height: 34, borderRadius: "var(--radius-sm)",
-  border: "1px solid var(--border)", background: "var(--bg-raised)",
-  cursor: "pointer", color: "var(--fg2)", fontSize: 18,
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
-};
+const SESSION_BG: Record<SessionKey, string> = { morning: "var(--clay-100, #f5ebe0)", afternoon: "var(--mist-100, #e8f0f5)", evening: "var(--rose-100, #fce8e8)" };
+const SESSION_BORDER: Record<SessionKey, string> = { morning: "var(--clay-300, #d4a87a)", afternoon: "var(--mist-300, #90b8cc)", evening: "var(--rose-300, #e8a0a0)" };
+const SESSION_COLOR: Record<SessionKey, string> = { morning: "var(--clay-700, #7a4f28)", afternoon: "var(--mist-700, #2a6080)", evening: "var(--rose-700, #8a3030)" };
+const navBtnStyle: React.CSSProperties = { width: 34, height: 34, borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "var(--bg-raised)", cursor: "pointer", color: "var(--fg2)", fontSize: 18, display: "inline-flex", alignItems: "center", justifyContent: "center" };

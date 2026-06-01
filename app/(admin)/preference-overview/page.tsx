@@ -41,6 +41,7 @@ export default async function PreferenceOverviewPage({
         assistantName: p.assistant.user.name,
         date: p.date,
         sessionType: p.sessionType,
+        reason: p.reason,
       }))}
     />
   );

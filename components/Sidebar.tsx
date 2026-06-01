@@ -12,6 +12,7 @@ const ADMIN_GROUP_1 = [
 
 const ADMIN_GROUP_2 = [
   { href: "/clinic-days", icon: ClipboardIcon, label: "開診設定" },
+  { href: "/session-quota", icon: ListIcon, label: "診次設定" },
   { href: "/preference-overview", icon: HeartIcon, label: "劃假總覽" },
   { href: "/rules", icon: SettingsIcon, label: "排班規則" },
 ];
@@ -187,6 +188,15 @@ export default function Sidebar({ userName, userRole, isAdmin }: SidebarProps) {
         </button>
       </div>
     </aside>
+  );
+}
+
+function ListIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
   );
 }
 

@@ -24,11 +24,11 @@ interface Props {
 
 const SPECIALTIES = ["GP", "矯正", "牙周", "顯微", "兒牙", "口外"];
 
-function parsePrefs(raw: string | null): { preferredAssistantIds: string[]; needsTwoAssistants: boolean } {
+function parsePrefs(raw: string | null): { preferredAssistantIds: string[]; needsTwoAssistants: boolean; needsThreeAssistants: boolean } {
   try {
     const parsed = JSON.parse(raw ?? "{}");
-    return { preferredAssistantIds: [], needsTwoAssistants: false, ...parsed };
-  } catch { return { preferredAssistantIds: [], needsTwoAssistants: false }; }
+    return { preferredAssistantIds: [], needsTwoAssistants: false, needsThreeAssistants: false, ...parsed };
+  } catch { return { preferredAssistantIds: [], needsTwoAssistants: false, needsThreeAssistants: false }; }
 }
 
 export default function DoctorsView({ doctors, assistants }: Props) {
@@ -40,12 +40,13 @@ export default function DoctorsView({ doctors, assistants }: Props) {
   const [notes, setNotes] = useState("");
   const [preferredAssistants, setPreferredAssistants] = useState<string[]>([]);
   const [needsTwoAssistants, setNeedsTwoAssistants] = useState(false);
+  const [needsThreeAssistants, setNeedsThreeAssistants] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   function openNew() {
     setEditDoc(null);
     setName(""); setSpecialty("GP"); setNotes("");
-    setPreferredAssistants([]); setNeedsTwoAssistants(false);
+    setPreferredAssistants([]); setNeedsTwoAssistants(false); setNeedsThreeAssistants(false);
     setShowForm(true);
   }
 
@@ -57,6 +58,7 @@ export default function DoctorsView({ doctors, assistants }: Props) {
     setNotes(doc.notes ?? "");
     setPreferredAssistants(prefs.preferredAssistantIds);
     setNeedsTwoAssistants(prefs.needsTwoAssistants);
+    setNeedsThreeAssistants(prefs.needsThreeAssistants);
     setShowForm(true);
   }
 
@@ -69,7 +71,7 @@ export default function DoctorsView({ doctors, assistants }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    const preferences = JSON.stringify({ preferredAssistantIds: preferredAssistants, needsTwoAssistants });
+    const preferences = JSON.stringify({ preferredAssistantIds: preferredAssistants, needsTwoAssistants, needsThreeAssistants });
 
     if (editDoc) {
       await fetch(`/api/doctors/${editDoc.id}`, {
@@ -151,28 +153,29 @@ export default function DoctorsView({ doctors, assistants }: Props) {
               )}
             </div>
 
-            {/* Needs two assistants */}
+            {/* Assistant count needed */}
             <div>
-              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                <div
-                  onClick={() => setNeedsTwoAssistants((v) => !v)}
-                  style={{
-                    width: 20, height: 20, borderRadius: 5, flexShrink: 0,
-                    border: needsTwoAssistants ? "2px solid var(--sage-500)" : "1.5px solid var(--border)",
-                    background: needsTwoAssistants ? "var(--sage-500)" : "white",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer", transition: "all .15s",
-                  }}
-                >
-                  {needsTwoAssistants && <span style={{ color: "white", fontSize: 13, lineHeight: 1 }}>✓</span>}
-                </div>
-                <div>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--fg1)" }}>需要兩位跟診助理</span>
-                  <span style={{ fontSize: 12.5, color: "var(--fg3)", marginLeft: 8 }}>
-                    每個診次同時安排兩位助理
-                  </span>
-                </div>
-              </label>
+              <label style={labelStyle}>每診次需要幾位跟診助理</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[
+                  { label: "1 位", two: false, three: false },
+                  { label: "2 位", two: true, three: false },
+                  { label: "3 位", two: false, three: true },
+                ].map((opt) => {
+                  const isSelected = opt.two === needsTwoAssistants && opt.three === needsThreeAssistants;
+                  return (
+                    <button key={opt.label} type="button"
+                      onClick={() => { setNeedsTwoAssistants(opt.two); setNeedsThreeAssistants(opt.three); }}
+                      style={{
+                        height: 36, padding: "0 16px", borderRadius: "var(--radius-sm)",
+                        border: isSelected ? "2px solid var(--sage-500)" : "1.5px solid var(--border)",
+                        background: isSelected ? "var(--brand-soft)" : "transparent",
+                        color: isSelected ? "var(--sage-700)" : "var(--fg3)",
+                        fontSize: 13.5, fontWeight: 600, cursor: "pointer", transition: "all .15s",
+                      }}>{opt.label}</button>
+                  );
+                })}
+              </div>
             </div>
 
             <div style={{ display: "flex", gap: 10, marginTop: 4 }}>

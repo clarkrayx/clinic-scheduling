@@ -8,9 +8,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { title, description, ruleType, config } = await req.json();
+  const { title, description, ruleType, config, isMandatory } = await req.json();
   const rule = await prisma.specialRule.create({
-    data: { title, description, ruleType, config: config ?? "{}" },
+    data: { title, description, ruleType, config: config ?? "{}", isMandatory: isMandatory !== false },
   });
   return NextResponse.json(rule);
 }

@@ -35,6 +35,11 @@ interface ScheduleInput {
     description: string;
     ruleType: string;
     config: string;
+    isMandatory: boolean;
+  }[];
+  sessionQuotas: {
+    assistantId: string;
+    sessions: number;
   }[];
   doctors: {
     id: string;
@@ -87,11 +92,25 @@ ${
       }).join("\n")
 }
 
-## 特殊規則
+## 每位助理當月應排診次數（必須精確符合，不可多排也不可少排）
 ${
-  input.specialRules.length === 0
-    ? "（無特殊規則）"
-    : input.specialRules.map((r) => `- ${r.title}: ${r.description}`).join("\n")
+  input.sessionQuotas.length === 0
+    ? "（未設定，依 maxSessionsPerMonth 限制）"
+    : input.sessionQuotas.map((q) => `- 助理ID: ${q.assistantId}, 應排診次: ${q.sessions}`).join("\n")
+}
+
+## 強制規則（必須嚴格遵守）
+${
+  input.specialRules.filter((r) => r.isMandatory).length === 0
+    ? "（無強制規則）"
+    : input.specialRules.filter((r) => r.isMandatory).map((r) => `- ${r.title}: ${r.description}`).join("\n")
+}
+
+## 通融規則（盡量遵守，人力不足時可彈性處理）
+${
+  input.specialRules.filter((r) => !r.isMandatory).length === 0
+    ? "（無通融規則）"
+    : input.specialRules.filter((r) => !r.isMandatory).map((r) => `- ${r.title}: ${r.description}`).join("\n")
 }
 
 ## 診次清單
@@ -115,6 +134,8 @@ ${input.clinicDays
 3. 避免同一位助理連續排超過 5 天
 4. 公平分配，讓每位助理的班數盡量均等
 5. 助理有劃假的日期盡量避開排班，但若人力不足仍可安排（軟性約束，非強制）
+8. 若有設定「應排診次數」，必須嚴格達到每位助理的指定診次數（不多不少）
+9. 每位助理在同一個診次中只能擔任一個職位（跟診、機動或櫃檯），同一天不同診次可以再排
 6. 技能要匹配（counter 技能排櫃檯，mobile 技能排機動）
 7. 若助理名單中有設定「每月上限」，該助理本月的總診次數不得超過此上限
 
