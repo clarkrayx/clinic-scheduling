@@ -45,8 +45,8 @@ export default function PreferenceView({ year, month, assistantId, preferenceDay
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
 
-  // reason modal state
-  const [pendingMark, setPendingMark] = useState<{ dateStr: string; session: SessionKey } | null>(null);
+  // modal state — null = closed, or { dateStr, session, isEdit }
+  const [modalData, setModalData] = useState<{ dateStr: string; session: SessionKey; isEdit: boolean } | null>(null);
   const [reasonInput, setReasonInput] = useState("");
 
   const markedMap = new Map(
@@ -65,32 +65,34 @@ export default function PreferenceView({ year, month, assistantId, preferenceDay
   }
 
   function handleDayClick(dateStr: string, session: SessionKey) {
-    const key = markedKey(dateStr, session);
     if (busy) return;
+    const key = markedKey(dateStr, session);
     if (markedMap.has(key)) {
-      // Unmark directly
-      doUnmark(dateStr, session);
+      // Already marked — open edit modal with existing reason
+      setReasonInput(markedMap.get(key) ?? "");
+      setModalData({ dateStr, session, isEdit: true });
     } else {
-      // Show reason modal
-      setPendingMark({ dateStr, session });
+      // New mark — open modal with empty reason
       setReasonInput("");
+      setModalData({ dateStr, session, isEdit: false });
     }
   }
 
   const doUnmark = useCallback(async (dateStr: string, session: SessionKey) => {
     const key = markedKey(dateStr, session);
     setBusy(key);
+    setModalData(null);
     await fetch(`/api/preference-days/${dateStr}?assistantId=${assistantId}&sessionType=${session}`, { method: "DELETE" });
     setBusy(null);
     router.refresh();
   }, [assistantId, router]);
 
   async function confirmMark() {
-    if (!pendingMark) return;
-    const { dateStr, session } = pendingMark;
+    if (!modalData) return;
+    const { dateStr, session } = modalData;
     const key = markedKey(dateStr, session);
     setBusy(key);
-    setPendingMark(null);
+    setModalData(null);
     await fetch("/api/preference-days", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -103,28 +105,47 @@ export default function PreferenceView({ year, month, assistantId, preferenceDay
   return (
     <div style={{ padding: "28px 32px 40px" }}>
       {/* Reason modal */}
-      {pendingMark && (
+      {modalData && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-          <div style={{ background: "white", borderRadius: "var(--radius-lg)", padding: "28px 32px", maxWidth: 400, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,.15)" }}>
+          <div style={{ background: "white", borderRadius: "var(--radius-lg)", padding: "28px 32px", maxWidth: 420, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,.15)" }}>
             <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "var(--fg1)" }}>
-              標記 {pendingMark.dateStr.slice(5)} {SESSIONS.find(s => s.key === pendingMark.session)?.label} 為希望休假
+              {modalData.isEdit ? "編輯" : "標記"} {modalData.dateStr.slice(5)} {SESSIONS.find(s => s.key === modalData.session)?.label}
             </h3>
-            <p style={{ fontSize: 13, color: "var(--fg3)", margin: "0 0 16px" }}>請填寫請假理由（選填）</p>
+            <p style={{ fontSize: 13, color: "var(--fg3)", margin: "0 0 14px" }}>
+              {modalData.isEdit ? "修改請假理由，或移除此劃假" : "填寫請假理由（選填）"}
+            </p>
             <textarea
               value={reasonInput}
               onChange={(e) => setReasonInput(e.target.value)}
               rows={3}
               placeholder="例：出遊、家事、身體不適..."
               autoFocus
-              style={{ width: "100%", padding: "10px 12px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", background: "var(--bg)", fontSize: 14, color: "var(--fg1)", outline: "none", resize: "vertical" }}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", background: "var(--bg)", fontSize: 14, color: "var(--fg1)", outline: "none", resize: "vertical", boxSizing: "border-box" }}
             />
-            <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "flex-end" }}>
-              <button onClick={() => setPendingMark(null)} style={{ height: 36, padding: "0 14px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "transparent", color: "var(--fg2)", fontSize: 13.5, cursor: "pointer" }}>
-                取消
-              </button>
-              <button onClick={confirmMark} style={{ height: 36, padding: "0 16px", borderRadius: "var(--radius-sm)", background: "var(--rose-400)", color: "white", border: "none", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
-                確認劃假
-              </button>
+            <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "space-between", alignItems: "center" }}>
+              {/* Remove button (edit mode only) */}
+              {modalData.isEdit && (
+                <button
+                  onClick={() => doUnmark(modalData.dateStr, modalData.session)}
+                  style={{ height: 36, padding: "0 14px", borderRadius: "var(--radius-sm)", border: "1px solid var(--rose-300)", background: "transparent", color: "var(--rose-600)", fontSize: 13, cursor: "pointer" }}
+                >
+                  移除劃假
+                </button>
+              )}
+              <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+                <button
+                  onClick={() => setModalData(null)}
+                  style={{ height: 36, padding: "0 14px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "transparent", color: "var(--fg2)", fontSize: 13.5, cursor: "pointer" }}
+                >
+                  取消
+                </button>
+                <button
+                  onClick={confirmMark}
+                  style={{ height: 36, padding: "0 18px", borderRadius: "var(--radius-sm)", background: "var(--rose-400)", color: "white", border: "none", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
+                >
+                  儲存
+                </button>
+              </div>
             </div>
           </div>
         </div>

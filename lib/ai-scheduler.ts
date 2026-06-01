@@ -39,7 +39,9 @@ interface ScheduleInput {
   }[];
   sessionQuotas: {
     assistantId: string;
-    sessions: number;
+    sessions: number;      // 當月診次
+    leaveSessions: number; // 請假診次（特休/事假等）
+    actualSessions: number; // 實際應上班診次 = sessions - leaveSessions
   }[];
   doctors: {
     id: string;
@@ -92,11 +94,11 @@ ${
       }).join("\n")
 }
 
-## 每位助理當月應排診次數（必須精確符合，不可多排也不可少排）
+## 每位助理當月實際應排診次數（必須精確符合，不可多排也不可少排）
 ${
   input.sessionQuotas.length === 0
-    ? "（未設定，依 maxSessionsPerMonth 限制）"
-    : input.sessionQuotas.map((q) => `- 助理ID: ${q.assistantId}, 應排診次: ${q.sessions}`).join("\n")
+    ? "（未設定，請盡量公平分配）"
+    : input.sessionQuotas.map((q) => `- 助理ID: ${q.assistantId}, 當月診次: ${q.sessions}, 請假診次: ${q.leaveSessions}, 實際應排: ${q.actualSessions}`).join("\n")
 }
 
 ## 強制規則（必須嚴格遵守）

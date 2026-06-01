@@ -161,14 +161,15 @@ model SpecialRule {
 }
 
 model MonthlySessionQuota {
-  id          String    @id @default(cuid())
-  assistantId String
-  assistant   Assistant @relation(fields: [assistantId], references: [id])
-  year        Int
-  month       Int
-  sessions    Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  assistantId   String
+  assistant     Assistant @relation(fields: [assistantId], references: [id])
+  year          Int
+  month         Int
+  sessions      Int       @default(0)
+  leaveSessions Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@unique([assistantId, year, month])
 }

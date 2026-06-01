@@ -79,7 +79,6 @@ export default function AssistantsView({ assistants, doctors, isAdmin }: Props) 
   const [isActive, setIsActive] = useState(true);
   const [isTraining, setIsTraining] = useState(false);
   const [skills, setSkills] = useState<string[]>(["counter", "mobile"]);
-  const [maxSessionsPerMonth, setMaxSessionsPerMonth] = useState<number | "">("");
   const [notes, setNotes] = useState("");
   const [preferredDoctors, setPreferredDoctors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -93,7 +92,7 @@ export default function AssistantsView({ assistants, doctors, isAdmin }: Props) 
     setEditId(null);
     setName(""); setEmail(""); setPassword(""); setNewPassword(""); setShowNewPassword(false);
     setIsActive(true); setIsTraining(false);
-    setSkills(["counter", "mobile"]); setMaxSessionsPerMonth(""); setNotes("");
+    setSkills(["counter", "mobile"]); setNotes("");
     setPreferredDoctors([]);
     setFormError("");
     setShowForm(true);
@@ -107,7 +106,6 @@ export default function AssistantsView({ assistants, doctors, isAdmin }: Props) 
     setIsActive(ast.isActive);
     setIsTraining(ast.isTraining ?? false);
     setSkills(parseSkills(ast.skills));
-    setMaxSessionsPerMonth(ast.maxSessionsPerMonth ?? "");
     setNotes(ast.notes ?? "");
     setPreferredDoctors(parsePrefs(ast.preferences).preferredDoctorIds ?? []);
     setFormError("");
@@ -131,9 +129,7 @@ export default function AssistantsView({ assistants, doctors, isAdmin }: Props) 
 
     if (editId) {
       const body: Record<string, unknown> = {
-        name, email, skills, notes, isActive, isTraining,
-        maxSessionsPerMonth: maxSessionsPerMonth === "" ? null : maxSessionsPerMonth,
-        preferences,
+        name, email, skills, notes, isActive, isTraining, preferences,
       };
       if (newPassword) body.newPassword = newPassword;
 
@@ -152,11 +148,7 @@ export default function AssistantsView({ assistants, doctors, isAdmin }: Props) 
       const res = await fetch("/api/assistants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name, email, password, skills, notes, isTraining,
-          maxSessionsPerMonth: maxSessionsPerMonth === "" ? null : maxSessionsPerMonth,
-          preferences,
-        }),
+        body: JSON.stringify({ name, email, password, skills, notes, isTraining, preferences }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -235,15 +227,8 @@ export default function AssistantsView({ assistants, doctors, isAdmin }: Props) 
               </div>
             ) : (
               <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: showNewPassword ? 8 : 0 }}>
-                  <label style={{ ...labelStyle, margin: 0 }}>重設密碼</label>
-                  <button type="button" onClick={() => { setShowNewPassword((v) => !v); setNewPassword(""); }} style={ghostSmallBtnStyle}>
-                    {showNewPassword ? "取消" : "重設密碼"}
-                  </button>
-                </div>
-                {showNewPassword && (
-                  <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={inputStyle} placeholder="輸入新密碼（至少 8 個字元）" minLength={8} />
-                )}
+                <label style={labelStyle}>新密碼（留空表示不變更）</label>
+                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={inputStyle} placeholder="輸入新密碼（至少 8 個字元，留空不更改）" minLength={newPassword ? 8 : 0} />
               </div>
             )}
 
@@ -281,19 +266,6 @@ export default function AssistantsView({ assistants, doctors, isAdmin }: Props) 
                   <span style={{ fontSize: 12.5, color: "var(--fg3)", marginLeft: 8 }}>排班時須安排有教學技能的助理在旁</span>
                 </div>
               </label>
-            </div>
-
-            {/* Max sessions */}
-            <div>
-              <label style={labelStyle}>每月上班診次上限</label>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <input type="number" min={1} max={60} value={maxSessionsPerMonth}
-                  onChange={(e) => setMaxSessionsPerMonth(e.target.value === "" ? "" : parseInt(e.target.value))}
-                  placeholder="不限" style={{ ...inputStyle, width: 120 }} />
-                <span style={{ fontSize: 13, color: "var(--fg3)" }}>
-                  {maxSessionsPerMonth ? `每月最多 ${maxSessionsPerMonth} 診` : "不設上限"}
-                </span>
-              </div>
             </div>
 
             {/* Skills */}
@@ -416,9 +388,6 @@ export default function AssistantsView({ assistants, doctors, isAdmin }: Props) 
                     <span style={{ fontSize: 14, fontWeight: 600, color: "var(--fg1)" }}>{ast.user.name}</span>
                     {ast.isTraining && (
                       <span style={tagStyle("var(--clay-100)", "var(--clay-700)")}>教學中</span>
-                    )}
-                    {ast.maxSessionsPerMonth && (
-                      <span style={tagStyle("var(--mist-100)", "var(--mist-700)")}>上限 {ast.maxSessionsPerMonth} 診</span>
                     )}
                     {!ast.isActive && (
                       <span style={tagStyle("var(--neutral-100)", "var(--fg3)")}>已停用</span>

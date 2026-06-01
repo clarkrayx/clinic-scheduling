@@ -81,6 +81,8 @@ export async function POST(req: NextRequest) {
     sessionQuotas: sessionQuotas.map((q) => ({
       assistantId: q.assistantId,
       sessions: q.sessions,
+      leaveSessions: q.leaveSessions,
+      actualSessions: Math.max(0, q.sessions - q.leaveSessions),
     })),
     doctors: doctors.map((d) => ({
       id: d.id,
